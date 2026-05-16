@@ -54,9 +54,14 @@ export default function SidebarLayout() {
                 <Link to="/students/pending" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
                   Pending Approvals
                 </Link>
-                <Link to="/students/list" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
-                  Student List
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Attendance</div>
+                <Link to="/attendance/mark" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Mark Attendance
                 </Link>
+                <Link to="/attendance/summary" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Daily Summary
+                </Link>
+
                 <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Leave Management</div>
                 <Link to="/leaves/pending" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-yellow-500">
                   Leave Approvals
@@ -72,6 +77,11 @@ export default function SidebarLayout() {
 
             {user?.role === 'STUDENT' && (
               <>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">My Daily Record</div>
+                <Link to="/student/attendance" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-green-500">
+                  My Attendance
+                </Link>
+
                 <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">My Leaves</div>
                 <Link to="/student/leaves/request" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-blue-500">
                   Apply for Leave

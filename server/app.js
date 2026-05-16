@@ -10,6 +10,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const roomRoutes = require('./routes/roomRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/leaves', leaveRoutes);
+app.use('/api/attendance', attendanceRoutes);
 app.get('/', (req, res) => res.json({ success: true, message: "Server running" }));
 
 // Error handling middleware

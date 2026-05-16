@@ -91,4 +91,12 @@ const leaveSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// ==========================================
+// PERFORMANCE OPTIMIZATION: MONGODB INDEXES
+// ==========================================
+// Speeds up warden dashboard and history queries
+leaveSchema.index({ hostelId: 1, status: 1 });
+leaveSchema.index({ studentId: 1 });
+// qrToken already has a unique index from the schema definition
+
 module.exports = mongoose.model('Leave', leaveSchema);

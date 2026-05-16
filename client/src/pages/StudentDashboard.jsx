@@ -7,13 +7,18 @@ import { Link } from 'react-router-dom';
 export default function StudentDashboard() {
   const { user } = useContext(AuthContext);
   const [stats, setStats] = useState(null);
+  const [attendancePct, setAttendancePct] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await api.get('/leaves/stats');
-        setStats(res.data.stats);
+        const [statsRes, attRes] = await Promise.all([
+          api.get('/leaves/stats'),
+          api.get('/attendance/student/history')
+        ]);
+        setStats(statsRes.data.stats);
+        setAttendancePct(attRes.data.percentage);
       } catch (error) {
         // Stats might not load if the student isn't approved yet, that's fine
       } finally {
@@ -70,6 +75,14 @@ export default function StudentDashboard() {
               <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Total Leaves Taken</h3>
               <div className="text-4xl font-black text-gray-800">{totalLeaves || 0}</div>
               <Link to="/student/leaves/history" className="mt-4 inline-block text-sm text-gray-600 font-bold hover:underline">View History &rarr;</Link>
+            </div>
+
+            <div className="bg-white p-6 rounded shadow border-t-4 border-green-500 md:col-span-2">
+              <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Overall Attendance Rate</h3>
+              <div className="flex justify-between items-end">
+                <div className={`text-5xl font-black ${attendancePct >= 75 ? 'text-green-600' : 'text-red-600'}`}>{attendancePct !== null ? attendancePct : 0}%</div>
+                <Link to="/student/attendance" className="inline-block text-sm text-green-700 font-bold hover:underline">View Daily Logs &rarr;</Link>
+              </div>
             </div>
           </div>
         </div>

@@ -123,4 +123,12 @@ userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// ==========================================
+// PERFORMANCE OPTIMIZATION: MONGODB INDEXES
+// ==========================================
+// Indexing role and hostelId speeds up warden/admin queries significantly
+userSchema.index({ role: 1, hostelId: 1 });
+userSchema.index({ approvalStatus: 1 });
+userSchema.index({ roomId: 1 });
+
 module.exports = mongoose.model('User', userSchema);

@@ -62,21 +62,18 @@ const register = async (req, res, next) => {
       </div>
     `;
 
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: 'Verify your Email - Smart Hostel Management System',
-        html: emailHtml
-      });
-    } catch (emailError) {
-      console.error('Email could not be sent', emailError);
-      // We still return success as user is created, they can request another OTP later
-    }
-
     res.status(201).json({ 
       success: true, 
       message: 'Registration successful. Please check your email for OTP verification.' 
     });
+
+    // Optimization: Send email asynchronously
+    sendEmail({
+      email: user.email,
+      subject: 'Verify your Email - Smart Hostel Management System',
+      html: emailHtml
+    }).catch(emailError => console.error('Email could not be sent', emailError));
+
   } catch (error) {
     next(error);
   }

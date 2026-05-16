@@ -132,25 +132,19 @@ const emailHtml = `
   </div>
 `;
 
-try {
-
-  await sendEmail({
+  // Optimization: Send email asynchronously in the background
+  sendEmail({
     email: student.email,
     subject: 'Verify Email - Smart Hostel',
     html: emailHtml
-  });
-
-} catch (emailError) {
-
-  console.error(emailError);
-
-}
+  }).catch(emailError => console.error(emailError));
 
 res.status(201).json({
   success: true,
-  message: 'Registration successful. Please verify OTP.'
+  message: 'Registration successful. Please check your email for OTP verification.'
 });
 
+console.timeEnd('registerStudentAPI');
 
 } catch (error) {
 
@@ -397,19 +391,12 @@ const emailHtml = `
   </div>
 `;
 
-try {
-
-  await sendEmail({
+  // Optimization: Send email asynchronously
+  sendEmail({
     email: student.email,
     subject: 'Hostel Approval',
     html: emailHtml
-  });
-
-} catch (emailError) {
-
-  console.error(emailError);
-
-}
+  }).catch(emailError => console.error(emailError));
 
 // Parent Linking
 if (student.parentEmail) {
@@ -487,19 +474,12 @@ student.isApproved = false;
 
 await student.save();
 
-try {
-
-  await sendEmail({
+  // Optimization: Send email asynchronously
+  sendEmail({
     email: student.email,
     subject: 'Hostel Application Update',
     html: '<p>Your hostel application was rejected.</p>'
-  });
-
-} catch (emailError) {
-
-  console.error(emailError);
-
-}
+  }).catch(emailError => console.error(emailError));
 
 res.status(200).json({
   success: true,
@@ -604,9 +584,8 @@ student.bedNumber = newBedNumber;
 await student.save();
 
 // Email
-try {
-
-  await sendEmail({
+  // Optimization: Send email asynchronously
+  sendEmail({
     email: student.email,
     subject: 'Room Changed',
     html: `
@@ -615,13 +594,7 @@ try {
         Room ${newRoom.roomNumber}
       </p>
     `
-  });
-
-} catch (emailError) {
-
-  console.error(emailError);
-
-}
+  }).catch(emailError => console.error(emailError));
 
 res.status(200).json({
   success: true,
@@ -655,7 +628,8 @@ if (req.user.role === 'WARDEN') {
 }
 
 const students = await User.find(query)
-  .populate('roomId', 'roomNumber floor');
+  .populate('roomId', 'roomNumber floor')
+  .lean(); // Optimization: lean()
 
 res.status(200).json({
   success: true,
@@ -691,7 +665,7 @@ if (req.user.role === 'WARDEN') {
   query.hostelId = req.user.hostelId;
 }
 
-const students = await User.find(query);
+const students = await User.find(query).lean(); // Optimization: lean()
 
 res.status(200).json({
   success: true,
@@ -719,7 +693,8 @@ const getSingleStudent = async (req, res, next) => {
 try {
 
 const student = await User.findById(req.params.id)
-  .populate('roomId', 'roomNumber floor');
+  .populate('roomId', 'roomNumber floor')
+  .lean(); // Optimization: lean()
 
 if (!student) {
 

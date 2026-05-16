@@ -29,6 +29,11 @@ import PendingLeaves from './pages/PendingLeaves';
 import LeaveHistory from './pages/LeaveHistory';
 import QRScanner from './pages/QRScanner';
 
+// Attendance
+import AttendanceMark from './pages/AttendanceMark';
+import AttendanceSummary from './pages/AttendanceSummary';
+import StudentAttendance from './pages/StudentAttendance';
+
 function App() {
   return (
     <AuthProvider>
@@ -62,6 +67,10 @@ function App() {
                 <Route path="/leaves/pending" element={<PendingLeaves />} />
                 <Route path="/leaves/history" element={<LeaveHistory />} />
                 <Route path="/leaves/scanner" element={<QRScanner />} />
+
+                {/* Attendance (Warden/Admin) */}
+                <Route path="/attendance/mark" element={<AttendanceMark />} />
+                <Route path="/attendance/summary" element={<AttendanceSummary />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
@@ -70,6 +79,9 @@ function App() {
                 {/* Leave Management (Student) */}
                 <Route path="/student/leaves/request" element={<StudentLeaveRequest />} />
                 <Route path="/student/leaves/history" element={<StudentLeaveHistory />} />
+                
+                {/* Attendance (Student) */}
+                <Route path="/student/attendance" element={<StudentAttendance />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>

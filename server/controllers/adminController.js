@@ -70,21 +70,19 @@ const createWarden = async (req, res, next) => {
       </div>
     `;
 
-    try {
-      await sendEmail({
-        email: warden.email,
-        subject: 'Warden Account Created - Smart Hostel',
-        html: emailHtml
-      });
-    } catch (emailError) {
-      console.error('Credentials email could not be sent', emailError);
-    }
-
     res.status(201).json({ 
       success: true, 
       message: 'Warden created and assigned successfully.',
       warden: { _id: warden._id, fullName: warden.fullName, email: warden.email }
     });
+
+    // Optimization: Send email asynchronously in the background so it doesn't block API response
+    sendEmail({
+      email: warden.email,
+      subject: 'Warden Account Created - Smart Hostel',
+      html: emailHtml
+    }).catch(emailError => console.error('Credentials email could not be sent', emailError));
+
   } catch (error) { next(error); }
 };
 
@@ -93,15 +91,28 @@ const createWarden = async (req, res, next) => {
 // @access  Private (Admin only)
 const getAdminDashboard = async (req, res, next) => {
   try {
-    const totalHostels = await Hostel.countDocuments();
-    const activeHostels = await Hostel.countDocuments({ isActive: true });
-    const totalWardens = await User.countDocuments({ role: 'WARDEN' });
-    const totalStudents = await User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED' });
-    const pendingStudents = await User.countDocuments({ role: 'STUDENT', approvalStatus: 'PENDING' });
-    
-    // Aggregating room stats
     const Room = require('../models/Room');
-    const rooms = await Room.find();
+    console.time('adminDashboardStats');
+
+    // Optimization: Parallelize all independent DB count queries
+    const [
+      totalHostels, 
+      activeHostels, 
+      totalWardens, 
+      totalStudents, 
+      pendingStudents,
+      rooms
+    ] = await Promise.all([
+      Hostel.countDocuments(),
+      Hostel.countDocuments({ isActive: true }),
+      User.countDocuments({ role: 'WARDEN' }),
+      User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED' }),
+      User.countDocuments({ role: 'STUDENT', approvalStatus: 'PENDING' }),
+      Room.find().lean() // Optimization: lean() for fast read
+    ]);
+    
+    console.timeEnd('adminDashboardStats');
+
     let totalRooms = rooms.length;
     let occupiedRooms = rooms.filter(r => r.occupiedBeds > 0).length;
     let availableBeds = rooms.reduce((acc, curr) => acc + (curr.availableBeds || 0), 0);
@@ -129,7 +140,9 @@ const getWardensList = async (req, res, next) => {
   try {
     const wardens = await User.find({ role: 'WARDEN' })
       .populate('hostelId', 'name hostelCode gender totalRooms')
-      .select('-password -emailOtp -emailOtpExpiry');
+      .select('-password -emailOtp -emailOtpExpiry')
+      .lean(); // Optimization: lean()
+
       
     res.status(200).json({ success: true, count: wardens.length, wardens });
   } catch (error) { next(error); }

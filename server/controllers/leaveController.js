@@ -8,8 +8,10 @@ const sendEmail = require('../utils/email');
 // REQUEST LEAVE (STUDENT)
 // ======================================================
 const requestLeave = async (req, res, next) => {
+  console.time('requestLeaveAPI');
   try {
-    const student = await User.findById(req.user._id);
+    const student = await User.findById(req.user._id).lean(); // Optimization: lean()
+
 
     // Validation: student must be approved and have a room
     if (student.approvalStatus !== 'APPROVED' || !student.roomId) {
@@ -50,6 +52,7 @@ const requestLeave = async (req, res, next) => {
     });
 
     res.status(201).json({ success: true, message: 'Leave requested successfully.', leave });
+    console.timeEnd('requestLeaveAPI');
   } catch (error) { next(error); }
 };
 
@@ -66,7 +69,8 @@ const getPendingLeaves = async (req, res, next) => {
     const leaves = await Leave.find(query)
       .populate('studentId', 'fullName email admissionNumber department')
       .populate('roomId', 'roomNumber floor')
-      .sort('departureDate');
+      .sort('departureDate')
+      .lean(); // Optimization: use lean() for read-only queries
 
     res.status(200).json({ success: true, count: leaves.length, leaves });
   } catch (error) { next(error); }
@@ -85,7 +89,8 @@ const getLeaveHistory = async (req, res, next) => {
     const leaves = await Leave.find(query)
       .populate('studentId', 'fullName email admissionNumber department')
       .populate('roomId', 'roomNumber floor')
-      .sort('-updatedAt');
+      .sort('-updatedAt')
+      .lean(); // Optimization: use lean() for read-only queries
 
     res.status(200).json({ success: true, count: leaves.length, leaves });
   } catch (error) { next(error); }
@@ -96,7 +101,7 @@ const getLeaveHistory = async (req, res, next) => {
 // ======================================================
 const getStudentLeaveHistory = async (req, res, next) => {
   try {
-    const leaves = await Leave.find({ studentId: req.user._id }).sort('-createdAt');
+    const leaves = await Leave.find({ studentId: req.user._id }).sort('-createdAt').lean();
     res.status(200).json({ success: true, count: leaves.length, leaves });
   } catch (error) { next(error); }
 };
@@ -105,6 +110,7 @@ const getStudentLeaveHistory = async (req, res, next) => {
 // APPROVE LEAVE (WARDEN/ADMIN)
 // ======================================================
 const approveLeave = async (req, res, next) => {
+  console.time('approveLeaveAPI');
   try {
     const leave = await Leave.findById(req.params.id).populate('studentId', 'fullName email');
 
@@ -145,11 +151,13 @@ const approveLeave = async (req, res, next) => {
       </div>
     `;
 
-    try {
-      await sendEmail({ email: leave.studentId.email, subject: 'Leave Request Approved - QR Pass Inside', html: emailHtml });
-    } catch (e) { console.error('Failed to send QR email', e); }
-
     res.status(200).json({ success: true, message: 'Leave approved and QR generated.', leave });
+
+    // Optimization: Non-blocking asynchronous email
+    sendEmail({ email: leave.studentId.email, subject: 'Leave Request Approved - QR Pass Inside', html: emailHtml })
+      .catch(e => console.error('Failed to send QR email', e));
+      
+    console.timeEnd('approveLeaveAPI');
   } catch (error) { next(error); }
 };
 
@@ -187,9 +195,11 @@ const rejectLeave = async (req, res, next) => {
       </div>
     `;
 
-    try { await sendEmail({ email: leave.studentId.email, subject: 'Leave Request Rejected', html: emailHtml }); } catch (e) {}
-
     res.status(200).json({ success: true, message: 'Leave rejected successfully.' });
+
+    // Optimization: Non-blocking email
+    sendEmail({ email: leave.studentId.email, subject: 'Leave Request Rejected', html: emailHtml })
+      .catch(e => console.error('Failed to send rejection email', e));
   } catch (error) { next(error); }
 };
 
@@ -254,8 +264,11 @@ const verifyQR = async (req, res, next) => {
 const getLeaveStats = async (req, res, next) => {
   try {
     if (req.user.role === 'STUDENT') {
-      const activeLeave = await Leave.findOne({ studentId: req.user._id, status: { $in: ['PENDING', 'APPROVED', 'EXITED'] } });
-      const totalLeaves = await Leave.countDocuments({ studentId: req.user._id });
+      // Optimization: Parallelize async queries
+      const [activeLeave, totalLeaves] = await Promise.all([
+        Leave.findOne({ studentId: req.user._id, status: { $in: ['PENDING', 'APPROVED', 'EXITED'] } }).lean(),
+        Leave.countDocuments({ studentId: req.user._id })
+      ]);
       return res.status(200).json({ success: true, stats: { activeLeave, totalLeaves } });
     }
 
@@ -263,20 +276,21 @@ const getLeaveStats = async (req, res, next) => {
     let query = {};
     if (req.user.role === 'WARDEN') query.hostelId = req.user.hostelId;
 
-    const pendingLeaves = await Leave.countDocuments({ ...query, status: 'PENDING' });
-    const studentsOutside = await Leave.countDocuments({ ...query, status: 'EXITED' });
-
-    // Returned today
     const startOfDay = new Date();
     startOfDay.setHours(0,0,0,0);
     const endOfDay = new Date();
     endOfDay.setHours(23,59,59,999);
 
-    const returnedToday = await Leave.countDocuments({ 
-      ...query, 
-      status: 'RETURNED',
-      returnedAt: { $gte: startOfDay, $lte: endOfDay }
-    });
+    // Optimization: Parallelize independent DB queries using Promise.all
+    const [pendingLeaves, studentsOutside, returnedToday] = await Promise.all([
+      Leave.countDocuments({ ...query, status: 'PENDING' }),
+      Leave.countDocuments({ ...query, status: 'EXITED' }),
+      Leave.countDocuments({ 
+        ...query, 
+        status: 'RETURNED',
+        returnedAt: { $gte: startOfDay, $lte: endOfDay }
+      })
+    ]);
 
     res.status(200).json({
       success: true,

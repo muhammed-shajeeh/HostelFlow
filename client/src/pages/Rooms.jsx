@@ -38,9 +38,9 @@ export default function Rooms() {
           setSelectedHostel(hRes.data.hostels[0]._id);
           setFormData(prev => ({ ...prev, hostelId: hRes.data.hostels[0]._id }));
         }
-      } else {
-        fetchRooms(user.hostelId);
       }
+      // For Wardens, selectedHostel is already initialized to user.hostelId,
+      // so the second useEffect will handle the initial fetch automatically.
     } catch (error) {
       toast.error('Failed to initialize data');
     } finally {
