@@ -29,6 +29,87 @@ const getNormalizedDate = (daysAhead = 0) => {
 };
 
 // ======================================================
+// CORE ERP FINANCIAL HELPER FUNCTIONS
+// ======================================================
+
+// DEFAULT fallback config used when no FeeConfig document exists yet
+const DEFAULT_FEE_CONFIG = {
+  hostelRent: 3000,
+  maintenanceFee: 500,
+  electricityFee: 300,
+  messMealRate: 50,
+  lateFineAmount: 200,
+  effectiveFrom: new Date('2000-01-01'),
+  _isDefault: true
+};
+
+// Resolve the most recently effective FeeConfig for a given date.
+// Falls back to DEFAULT_FEE_CONFIG safely — never crashes with null.
+const getActiveFeeConfig = async (forDate) => {
+  try {
+    const targetDate = forDate ? new Date(forDate) : new Date();
+    const config = await FeeConfig
+      .findOne({ effectiveFrom: { $lte: targetDate } })
+      .sort({ effectiveFrom: -1 })
+      .lean();
+
+    if (!config) {
+      console.warn('[FeeConfig] No active fee configuration found — using safe defaults.');
+      return DEFAULT_FEE_CONFIG;
+    }
+    return config;
+  } catch (err) {
+    console.error('[FeeConfig] Error fetching fee config, using defaults:', err.message);
+    return DEFAULT_FEE_CONFIG;
+  }
+};
+
+// Calculate total unpaid outstanding balance for a student before a given date
+const getOutstandingBalance = async (studentId, beforeDate) => {
+  try {
+    const unpaidInvoices = await Invoice.find({
+      studentId,
+      status: { $in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
+      dueDate: { $lt: beforeDate }
+    }).lean();
+
+    return unpaidInvoices.reduce((sum, inv) => {
+      return sum + Math.max(0, (inv.totalAmount || 0) - (inv.amountPaid || 0));
+    }, 0);
+  } catch (err) {
+    console.error('[Outstanding] Error calculating outstanding balance:', err.message);
+    return 0;
+  }
+};
+
+// Ensure a default FeeConfig exists (called at startup)
+const ensureDefaultFeeConfig = async () => {
+  try {
+    const existing = await FeeConfig.findOne({}).lean();
+    if (!existing) {
+      console.log('[FeeConfig] No config found — seeding default fee configuration...');
+      // Use a dummy ObjectId for the system seed; createdBy is optional in seeds
+      const systemId = new (require('mongoose').Types.ObjectId)();
+      await FeeConfig.create({
+        hostelRent: 3000,
+        maintenanceFee: 500,
+        electricityFee: 300,
+        messMealRate: 50,
+        lateFineAmount: 200,
+        effectiveFrom: new Date(),
+        createdBy: systemId
+      });
+      console.log('[FeeConfig] Default fee configuration seeded successfully.');
+    }
+  } catch (err) {
+    console.error('[FeeConfig] Could not seed default config:', err.message);
+  }
+};
+
+// Run the seed once on module load (non-blocking)
+ensureDefaultFeeConfig();
+
+// ======================================================
 // SMART MEAL ELIGIBILITY ENGINE (HELPERS)
 // ======================================================
 const syncStudentMealEligibility = async (studentId, hostelId, date) => {
@@ -471,7 +552,14 @@ const handleFeeConfig = async (req, res, next) => {
     }
 
     const config = await getActiveFeeConfig(new Date());
-    res.status(200).json({ success: true, config });
+    res.status(200).json({
+      success: true,
+      config,
+      isDefault: !!config._isDefault,
+      message: config._isDefault
+        ? 'Using system default rates. No custom fee configuration has been saved yet.'
+        : undefined
+    });
   } catch (error) { next(error); }
 };
 
@@ -923,7 +1011,8 @@ const getStudentMealLedger = async (req, res, next) => {
     let studentId = req.params.studentId;
 
     if (req.user.role === 'PARENT') {
-      if (!req.user.linkedStudents.includes(studentId)) {
+      const linked = req.user.linkedStudents || [];
+      if (!linked.map(id => id.toString()).includes(studentId.toString())) {
         return res.status(403).json({ success: false, message: 'Access denied: Student not linked.' });
       }
     } else if (req.user.role === 'STUDENT') {
@@ -950,8 +1039,9 @@ const getMessDues = async (req, res, next) => {
     let studentId = req.params.studentId;
 
     if (req.user.role === 'PARENT') {
-      if (!req.user.linkedStudents.includes(studentId)) {
-        return res.status(403).json({ success: false, message: 'Access denied.' });
+      const linked = req.user.linkedStudents || [];
+      if (!linked.map(id => id.toString()).includes(studentId.toString())) {
+        return res.status(403).json({ success: false, message: 'Access denied: Student not linked to your account.' });
       }
     } else if (req.user.role === 'STUDENT') {
       studentId = req.user._id.toString();

@@ -4,13 +4,13 @@ const financialAuditLogSchema = new mongoose.Schema({
   actorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
     index: true
+    // NOT required — system-generated events (e.g. overdue engine) have no actorId
   },
   actorRole: {
     type: String,
-    enum: ['ADMIN', 'WARDEN', 'STUDENT', 'PARENT'],
-    required: true
+    enum: ['ADMIN', 'WARDEN', 'STUDENT', 'PARENT', 'SYSTEM'],
+    default: 'SYSTEM'
   },
   hostelId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -27,7 +27,8 @@ const financialAuditLogSchema = new mongoose.Schema({
       'REFUND_ISSUED',
       'LATE_FINE_APPLIED',
       'PAYMENT_REMINDER_SENT',
-      'FEE_CONFIG_UPDATED'
+      'FEE_CONFIG_UPDATED',
+      'MEAL_OVERRIDE_APPLIED'
     ],
     required: true,
     index: true

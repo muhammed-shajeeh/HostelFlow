@@ -32,10 +32,14 @@ const feeConfigSchema = new mongoose.Schema({
     default: Date.now,
     index: true
   },
+  // Optional granular per-meal rates (override messMealRate when set)
+  breakfastRate: { type: Number },
+  lunchRate: { type: Number },
+  dinnerRate: { type: Number },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'User'
+    // NOT required — allows system auto-seed on first startup
   }
 }, {
   timestamps: true

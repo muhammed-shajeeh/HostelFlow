@@ -167,10 +167,14 @@ export default function WardenMessManagement() {
       const res = await api.get('/mess/fee-config');
       if (res.data.config) {
         setFeeConfig(res.data.config);
-        setConfigForm(res.data.config);
+        setConfigForm(prev => ({ ...prev, ...res.data.config }));
+        if (res.data.isDefault) {
+          toast('ℹ️ Using default rates. Set custom fee configuration in pricing settings.', { icon: '⚙️' });
+        }
       }
     } catch (error) {
-      toast.error('Failed to load fee configuration.');
+      // Non-blocking: config is optional, defaults are used server-side
+      console.warn('Fee config load failed, defaults will be used:', error.message);
     } finally {
       setLoadingConfig(false);
     }
@@ -195,7 +199,8 @@ export default function WardenMessManagement() {
       const res = await api.get('/mess/billing-cycles');
       setCycles(res.data.cycles || []);
     } catch (error) {
-      toast.error('Failed to load billing history.');
+      console.warn('Billing cycles load failed:', error.message);
+      setCycles([]);
     } finally {
       setLoadingCycles(false);
     }
@@ -207,6 +212,47 @@ export default function WardenMessManagement() {
       setAuditLogs(res.data.auditLogs || []);
     } catch (error) {
       console.log('Failed to fetch ledger logs', error);
+    }
+  };
+
+  // Fetch list of students with outstanding dues for the Ledger tab
+  const fetchUnpaidDues = async () => {
+    setLoadingUnpaid(true);
+    try {
+      const studentRes = await api.get('/students');
+      const students = studentRes.data.students || [];
+
+      const unpaidRecords = [];
+      await Promise.all(students.map(async (student) => {
+        try {
+          const dueRes = await api.get(`/mess/dues/${student._id}`);
+          let pendingTotal = 0;
+          (dueRes.data.invoices || []).forEach(inv => {
+            if (inv.status !== 'PAID') {
+              pendingTotal += Math.max(0, (inv.totalAmount || 0) - (inv.amountPaid || 0));
+            }
+          });
+          if (pendingTotal > 0) {
+            unpaidRecords.push({
+              studentId: student._id,
+              fullName: student.fullName,
+              room: student.roomId?.roomNumber || 'Unassigned',
+              admissionNumber: student.admissionNumber,
+              pendingAmount: pendingTotal,
+              financialHold: dueRes.data.financialHold
+            });
+          }
+        } catch (err) {
+          // Skip individual student errors silently
+        }
+      }));
+
+      setUnpaidList(unpaidRecords.sort((a, b) => b.pendingAmount - a.pendingAmount));
+    } catch (error) {
+      console.warn('Unpaid dues fetch failed:', error.message);
+      setUnpaidList([]);
+    } finally {
+      setLoadingUnpaid(false);
     }
   };
 
