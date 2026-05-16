@@ -99,6 +99,13 @@ const userSchema = new mongoose.Schema({
   },
   approvedAt: {
     type: Date
+  },
+  parentPhone: {
+    type: String
+  },
+  mustChangePassword: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

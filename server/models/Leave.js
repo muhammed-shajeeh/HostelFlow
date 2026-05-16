@@ -80,10 +80,6 @@ const leaveSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  parentApprovalRequired: {
-    type: Boolean,
-    default: false
-  },
   notes: {
     type: String
   }

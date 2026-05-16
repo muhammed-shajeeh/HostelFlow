@@ -78,6 +78,14 @@ export default function StudentAnalytics() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-white/80 z-[100] backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-indigo-600 border-opacity-25 border-t-indigo-600"></div>
+            <p className="text-sm font-bold text-indigo-600 animate-pulse">Loading Analytics...</p>
+          </div>
+        </div>
+      )}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">My Analytics</h2>
         <p className="text-sm text-gray-500 mt-1">Your personal hostel activity summary (last 90 days)</p>

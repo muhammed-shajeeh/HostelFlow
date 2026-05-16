@@ -5,6 +5,12 @@ const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
 const sendEmail = require('../utils/email');
 const { generateOTP } = require('../utils/otp');
+const crypto = require('crypto');
+
+// Helper to generate a secure random temporary password
+const generateTempPassword = () => {
+  return crypto.randomBytes(6).toString('hex'); // 12 character hex password
+};
 
 // @desc Register Student
 // @route POST /api/students/register
@@ -398,25 +404,76 @@ const emailHtml = `
     html: emailHtml
   }).catch(emailError => console.error(emailError));
 
-// Parent Linking
+// ======================================================
+// PARENT ACCOUNT WORKFLOW (PHASE 1, 3, 4, 5)
+// ======================================================
 if (student.parentEmail) {
+  let parent = await User.findOne({ email: student.parentEmail, role: 'PARENT' });
+  const tempPassword = generateTempPassword();
 
-  const parent = await User.findOne({
-    email: student.parentEmail,
-    role: 'PARENT'
-  });
-
-  if (
-    parent &&
-    !parent.linkedStudents.includes(student._id)
-  ) {
-
-    parent.linkedStudents.push(student._id);
+  if (!parent) {
+    // Phase 1: Create new PARENT account automatically
+    parent = new User({
+      fullName: student.parentName || 'Guardian',
+      email: student.parentEmail,
+      password: tempPassword, // Will be hashed by pre-save middleware
+      role: 'PARENT',
+      emailVerified: true,
+      isApproved: true,
+      mustChangePassword: true,
+      linkedStudents: [student._id]
+    });
 
     await parent.save();
 
-  }
+    // Phase 4: Send Onboarding Email to Parent
+    const parentEmailHtml = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #4f46e5;">Welcome to Smart Hostel Guardian Portal</h2>
+        <p>Dear ${parent.fullName},</p>
+        <p>Your child, <strong>${student.fullName}</strong>, has been approved for a stay at <strong>${bestRoom.hostelId?.name || 'our hostel'}</strong>.</p>
+        <p>A guardian account has been automatically created for you to monitor their attendance, leave requests, and more.</p>
+        
+        <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 0;"><strong>Portal Login:</strong> <a href="${process.env.FRONTEND_URL}/login">Guardian Portal</a></p>
+          <p style="margin: 5px 0;"><strong>Username:</strong> ${parent.email}</p>
+          <p style="margin: 0;"><strong>Temporary Password:</strong> <code style="background: #eee; padding: 2px 5px; border-radius: 3px;">${tempPassword}</code></p>
+        </div>
 
+        <p style="color: #ef4444; font-size: 0.9em;"><strong>Note:</strong> You will be required to change this password upon your first login for security reasons.</p>
+        <p>Regards,<br>Hostel Administration</p>
+      </div>
+    `;
+
+    sendEmail({
+      email: parent.email,
+      subject: 'Guardian Account Created - Smart Hostel',
+      html: parentEmailHtml
+    }).catch(err => console.error('Parent onboarding email failed', err));
+
+  } else {
+    // Phase 5: Existing Parent Detection & Sibling Linking
+    if (!parent.linkedStudents.includes(student._id)) {
+      parent.linkedStudents.push(student._id);
+      await parent.save();
+
+      // Notify parent about new student link
+      const linkEmailHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h3>New Student Linked to Your Account</h3>
+          <p>Hi ${parent.fullName},</p>
+          <p>Your child, <strong>${student.fullName}</strong>, has been linked to your existing guardian account.</p>
+          <p>You can now monitor their activities alongside your other linked students.</p>
+        </div>
+      `;
+
+      sendEmail({
+        email: parent.email,
+        subject: 'New Student Linked - Smart Hostel',
+        html: linkEmailHtml
+      }).catch(err => console.error('Parent link notification failed', err));
+    }
+  }
 }
 
 res.status(200).json({

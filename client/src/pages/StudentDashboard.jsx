@@ -10,29 +10,76 @@ export default function StudentDashboard() {
   const [attendancePct, setAttendancePct] = useState(null);
   const [complaintStats, setComplaintStats] = useState(null);
   const [noticeStats, setNoticeStats] = useState(null);
+  const [tomorrowMeal, setTomorrowMeal] = useState(null);
+  const [dues, setDues] = useState({ messPending: 0, hostelPending: 0 });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [statsRes, attRes, complaintRes, noticeRes] = await Promise.all([
-          api.get('/leaves/stats'),
-          api.get('/attendance/student/history'),
-          api.get('/complaints/stats'),
-          api.get('/notices/stats')
+  const fetchStats = async () => {
+    try {
+      const [statsRes, attRes, complaintRes, noticeRes] = await Promise.all([
+        api.get('/leaves/stats'),
+        api.get('/attendance/student/history'),
+        api.get('/complaints/stats'),
+        api.get('/notices/stats')
+      ]);
+      setStats(statsRes.data.stats);
+      setAttendancePct(attRes.data.percentage);
+      setComplaintStats(complaintRes.data.stats);
+      setNoticeStats(noticeRes.data.stats);
+
+      if (user?.approvalStatus === 'APPROVED') {
+        const [mealRes, duesRes] = await Promise.all([
+          api.get('/mess/tomorrow-meals'),
+          api.get(`/mess/dues/${user._id}`)
         ]);
-        setStats(statsRes.data.stats);
-        setAttendancePct(attRes.data.percentage);
-        setComplaintStats(complaintRes.data.stats);
-        setNoticeStats(noticeRes.data.stats);
-      } catch (error) {
-        // Stats may not load if student isn't fully approved yet — silent fail
-      } finally {
-        setLoading(false);
+        setTomorrowMeal(mealRes.data.eligibility);
+        
+        let messPending = 0;
+        let hostelPending = 0;
+        duesRes.data.messBills.forEach(b => { if (b.status === 'PENDING') messPending += b.totalAmount; });
+        duesRes.data.hostelFees.forEach(f => { if (f.status === 'PENDING') hostelPending += f.totalAmount; });
+        setDues({ messPending, hostelPending });
       }
-    };
+    } catch (error) {
+      // Stats may not load if student isn't fully approved yet — silent fail
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [timeLeftStr, setTimeLeftStr] = useState('');
+
+  useEffect(() => {
     fetchStats();
-  }, []);
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const cutoff = new Date();
+      cutoff.setHours(22, 0, 0, 0); // 10:00 PM
+      
+      const diffMs = cutoff.getTime() - now.getTime();
+      if (diffMs <= 0) {
+        setTimeLeftStr("LOCKED (Passed 10:00 PM)");
+      } else {
+        const hours = Math.floor(diffMs / 3600000);
+        const mins = Math.floor((diffMs % 3600000) / 60000);
+        const secs = Math.floor((diffMs % 60000) / 1000);
+        setTimeLeftStr(`Meal changes close in ${String(hours).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleToggleTomorrowMeal = async (meal) => {
+    try {
+      const res = await api.post('/mess/toggle-tomorrow', { meal });
+      setTomorrowMeal(res.data.eligibility);
+      toast.success(res.data.message);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to toggle tomorrow\'s meals.');
+    }
+  };
 
   if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
 
@@ -92,6 +139,103 @@ export default function StudentDashboard() {
                   <div className="text-xs text-gray-500">Semester</div>
                   <div className="font-bold">{user?.semester || 'N/A'}</div>
                 </div>
+              </div>
+            </div>
+
+             {/* Smart Mess Widget (Phase 5: Partial Skip + Cut-off Timer) */}
+             <div className="bg-white p-6 rounded shadow border-t-4 border-yellow-500 flex flex-col justify-between">
+               <div>
+                 <div className="flex justify-between items-center mb-2">
+                   <h3 className="text-gray-500 text-sm font-bold uppercase">Tomorrow's Meal Plan</h3>
+                   <span className="text-[10px] text-orange-500 font-bold bg-orange-50 px-2 py-0.5 rounded">
+                     {timeLeftStr}
+                   </span>
+                 </div>
+ 
+                 {tomorrowMeal ? (
+                   <div className="space-y-4 mt-3">
+                     <div className="flex flex-col gap-2">
+                       <label className="flex items-center justify-between p-2 bg-gray-50 rounded border cursor-pointer hover:bg-gray-100 transition">
+                         <span className="text-xs font-bold text-gray-700">🍳 Breakfast</span>
+                         <input
+                           type="checkbox"
+                           disabled={tomorrowMeal.skippedByLeave || timeLeftStr.includes("LOCKED")}
+                           checked={!!tomorrowMeal.breakfast}
+                           onChange={() => handleToggleTomorrowMeal('breakfast')}
+                           className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                         />
+                       </label>
+ 
+                       <label className="flex items-center justify-between p-2 bg-gray-50 rounded border cursor-pointer hover:bg-gray-100 transition">
+                         <span className="text-xs font-bold text-gray-700">🍛 Lunch</span>
+                         <input
+                           type="checkbox"
+                           disabled={tomorrowMeal.skippedByLeave || timeLeftStr.includes("LOCKED")}
+                           checked={!!tomorrowMeal.lunch}
+                           onChange={() => handleToggleTomorrowMeal('lunch')}
+                           className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                         />
+                       </label>
+ 
+                       <label className="flex items-center justify-between p-2 bg-gray-50 rounded border cursor-pointer hover:bg-gray-100 transition">
+                         <span className="text-xs font-bold text-gray-700">🍽️ Dinner</span>
+                         <input
+                           type="checkbox"
+                           disabled={tomorrowMeal.skippedByLeave || timeLeftStr.includes("LOCKED")}
+                           checked={!!tomorrowMeal.dinner}
+                           onChange={() => handleToggleTomorrowMeal('dinner')}
+                           className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                         />
+                       </label>
+                     </div>
+ 
+                     {tomorrowMeal.skippedByLeave && (
+                       <p className="text-[10px] text-red-600 font-bold italic">
+                         ⚠️ Meals locked due to tomorrow's approved leave.
+                       </p>
+                     )}
+                   </div>
+                 ) : (
+                   <p className="text-sm text-gray-500">Meal plan loading...</p>
+                 )}
+               </div>
+               <div className="mt-4">
+                 <button
+                   disabled={tomorrowMeal?.skippedByLeave || timeLeftStr.includes("LOCKED")}
+                   onClick={() => handleToggleTomorrowMeal('all')}
+                   className={`w-full text-center py-2 px-3 rounded text-xs font-bold transition shadow ${
+                     tomorrowMeal?.skippedManually
+                       ? 'bg-green-600 hover:bg-green-700 text-white'
+                       : 'bg-yellow-500 hover:bg-yellow-600 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                   }`}
+                 >
+                   {tomorrowMeal?.skippedManually ? '🔄 Resume All Meals' : '🚫 Skip All Tomorrow Meals'}
+                 </button>
+               </div>
+             </div>
+
+            {/* Billing & Fees Dues Widget */}
+            <div className="bg-white p-6 rounded shadow border-t-4 border-emerald-500 flex flex-col justify-between">
+              <div>
+                <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Hostel & Mess Dues</h3>
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <span className="block text-xs text-gray-400">Mess Dues</span>
+                    <span className="text-xl font-bold text-gray-800">₹{dues.messPending}</span>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-gray-400">Hostel Dues</span>
+                    <span className="text-xl font-bold text-gray-800">₹{dues.hostelPending}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4">
+                <Link
+                  to="/student/billing"
+                  className="block w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded text-sm font-bold transition shadow"
+                >
+                  Pay Online &rarr;
+                </Link>
               </div>
             </div>
 

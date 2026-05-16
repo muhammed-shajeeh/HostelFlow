@@ -14,6 +14,8 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
 const noticeRoutes = require('./routes/noticeRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const parentRoutes = require('./routes/parentRoutes');
+const messRoutes = require('./routes/messRoutes');
 
 const app = express();
 
@@ -27,7 +29,7 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 200, // limit increased to support robust dashboard updates
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', limiter);
@@ -58,6 +60,8 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/parent', parentRoutes);
+app.use('/api/mess', messRoutes);
 app.get('/', (req, res) => res.json({ success: true, message: "Server running" }));
 
 // Error handling middleware

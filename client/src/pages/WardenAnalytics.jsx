@@ -64,6 +64,14 @@ export default function WardenAnalytics() {
 
   return (
     <div>
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-white/80 z-[100] backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-indigo-600 border-opacity-25 border-t-indigo-600"></div>
+            <p className="text-sm font-bold text-indigo-600 animate-pulse">Loading Analytics...</p>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Hostel Analytics</h2>

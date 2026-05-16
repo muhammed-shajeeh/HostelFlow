@@ -20,7 +20,6 @@ import Rooms from './pages/Rooms';
 import PendingStudents from './pages/PendingStudents';
 import StudentList from './pages/StudentList';
 import StudentDashboard from './pages/StudentDashboard';
-import ParentDashboard from './pages/ParentDashboard';
 
 // Leave Management
 import StudentLeaveRequest from './pages/StudentLeaveRequest';
@@ -52,6 +51,15 @@ import NoticeManagement from './pages/NoticeManagement';
 import AdminAnalytics from './pages/AdminAnalytics';
 import WardenAnalytics from './pages/WardenAnalytics';
 import StudentAnalytics from './pages/StudentAnalytics';
+
+// Parent Portal
+import ParentDashboard from './pages/ParentDashboard';
+import ParentStudentView from './pages/ParentStudentView';
+import ChangePassword from './pages/ChangePassword';
+
+// Mess & Billing
+import StudentBilling from './pages/StudentBilling';
+import WardenMessManagement from './pages/WardenMessManagement';
 
 function App() {
   return (
@@ -106,8 +114,20 @@ function App() {
                 {/* Analytics (Warden/Admin) */}
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 <Route path="/warden/analytics" element={<WardenAnalytics />} />
+
+                {/* Mess Management (Warden/Admin) */}
+                <Route path="/warden/mess" element={<WardenMessManagement />} />
+                <Route path="/warden/mess-management" element={<WardenMessManagement />} />
+                <Route path="/admin/mess" element={<WardenMessManagement />} />
+                <Route path="/admin/billing" element={<WardenMessManagement />} />
               </Route>
               
+              <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>
+                <Route path="/parent/dashboard" element={<ParentDashboard />} />
+                <Route path="/parent/student/:id" element={<ParentStudentView />} />
+                <Route path="/parent/change-password" element={<ChangePassword />} />
+              </Route>
+
               <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
                 <Route path="/student" element={<StudentDashboard />} />
                 
@@ -127,6 +147,11 @@ function App() {
 
                 {/* Analytics (Student) */}
                 <Route path="/student/analytics" element={<StudentAnalytics />} />
+
+                {/* Mess & Fee Billing (Student) */}
+                <Route path="/student/billing" element={<StudentBilling />} />
+                <Route path="/student/mess" element={<StudentBilling />} />
+                <Route path="/student/payments" element={<StudentBilling />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>

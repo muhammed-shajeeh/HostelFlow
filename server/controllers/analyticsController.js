@@ -5,6 +5,9 @@ const Notice = require('../models/Notice');
 const Room = require('../models/Room');
 const Hostel = require('../models/Hostel');
 const User = require('../models/User');
+const MessBill = require('../models/MessBill');
+const HostelFee = require('../models/HostelFee');
+const Invoice = require('../models/Invoice');
 
 // ======================================================
 // ANALYTICS CONTROLLER
@@ -28,6 +31,7 @@ const User = require('../models/User');
 // either a populated object or a raw ObjectId
 // ──────────────────────────────────────────────────────
 const toObjectId = (val) => {
+  if (!val) return null;
   const mongoose = require('mongoose');
   const raw = val?._id || val;
   return new mongoose.Types.ObjectId(raw.toString());
@@ -68,7 +72,8 @@ const getAdminAnalytics = async (req, res, next) => {
       totalStudents,
       totalRooms,
       activeNotices,
-      emergencyNotices
+      emergencyNotices,
+      financials
     ] = await Promise.all([
       // ── 1. Hostel-wise occupancy ──────────────────
       // Join hostels with rooms to compute occupancy %
@@ -163,8 +168,22 @@ const getAdminAnalytics = async (req, res, next) => {
       User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED' }),
       Room.countDocuments(),
       Notice.countDocuments({ isActive: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }),
-      Notice.countDocuments({ priority: 'EMERGENCY', isActive: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] })
+      Notice.countDocuments({ priority: 'EMERGENCY', isActive: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }),
+
+      // ── Mess & Finance Analytics (Phase 11) ──────
+      Invoice.aggregate([
+        { $group: { _id: '$status', total: { $sum: '$totalAmount' }, collected: { $sum: '$amountPaid' } } }
+      ])
     ]);
+
+    // Format financial stats
+    let totalRevenue = 0;
+    let outstandingDues = 0;
+
+    financials.forEach(f => {
+      totalRevenue += f.collected;
+      outstandingDues += (f.total - f.collected);
+    });
 
     // ── Flatten complaint status into object ──────
     const complaintStatusMap = {};
@@ -180,7 +199,9 @@ const getAdminAnalytics = async (req, res, next) => {
           emergencyNotices,
           lateReturns,
           openComplaints: complaintStatusMap.OPEN || 0,
-          resolvedComplaints: complaintStatusMap.RESOLVED || 0
+          resolvedComplaints: complaintStatusMap.RESOLVED || 0,
+          totalRevenue,
+          outstandingDues
         },
         hostelOccupancy,
         attendanceTrend,
@@ -203,6 +224,9 @@ const getWardenAnalytics = async (req, res, next) => {
   try {
     // Hostel isolation: all queries scoped to this warden's hostel
     const hostelId = toObjectId(req.user.hostelId);
+    if (!hostelId) {
+      return res.status(400).json({ success: false, message: 'Warden has no hostel assigned.' });
+    }
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -214,7 +238,8 @@ const getWardenAnalytics = async (req, res, next) => {
       complaintsByStatus,      // Status breakdown
       leaveSummary,            // Active leaves count
       lateReturnCount,
-      totalStudents
+      totalStudents,
+      financials
     ] = await Promise.all([
       // ── 1. Room-level occupancy ───────────────────
       Room.find({ hostelId }, 'roomNumber floor capacity occupiedBeds availableBeds roomType')
@@ -270,7 +295,13 @@ const getWardenAnalytics = async (req, res, next) => {
       Attendance.countDocuments({ hostelId, status: 'LATE_RETURN' }),
 
       // ── 8. Total approved students ────────────────
-      User.countDocuments({ hostelId, role: 'STUDENT', approvalStatus: 'APPROVED' })
+      User.countDocuments({ hostelId, role: 'STUDENT', approvalStatus: 'APPROVED' }),
+
+      // ── Mess & Finance Analytics (Phase 11) ──────
+      Invoice.aggregate([
+        { $match: { hostelId } },
+        { $group: { _id: '$status', total: { $sum: '$totalAmount' }, collected: { $sum: '$amountPaid' } } }
+      ])
     ]);
 
     // Flatten summary maps
@@ -279,6 +310,15 @@ const getWardenAnalytics = async (req, res, next) => {
 
     const complaintStatusMap = {};
     complaintsByStatus.forEach(s => { complaintStatusMap[s._id] = s.count; });
+
+    // Format financial stats for Warden
+    let totalRevenue = 0;
+    let outstandingDues = 0;
+
+    financials.forEach(f => {
+      totalRevenue += f.collected;
+      outstandingDues += (f.total - f.collected);
+    });
 
     // Compute room utilisation %
     const totalCapacity = roomOccupancy.reduce((acc, r) => acc + r.capacity, 0);
@@ -294,7 +334,9 @@ const getWardenAnalytics = async (req, res, next) => {
           occupancyPct,
           leaveSummary,
           lateReturnCount,
-          openComplaints: complaintStatusMap.OPEN || 0
+          openComplaints: complaintStatusMap.OPEN || 0,
+          totalRevenue,
+          outstandingDues
         },
         roomOccupancy,
         attendanceTrend,
@@ -321,7 +363,8 @@ const getStudentAnalytics = async (req, res, next) => {
     const [
       attendanceHistory,   // All records for this student
       leaveHistory,        // All leave records
-      complaintSummary     // Grouped by status
+      complaintSummary,     // Grouped by status
+      invoices
     ] = await Promise.all([
       // ── 1. Attendance history (90 days) ──────────
       Attendance.find(
@@ -339,13 +382,27 @@ const getStudentAnalytics = async (req, res, next) => {
       Complaint.aggregate([
         { $match: { studentId } },
         { $group: { _id: '$status', count: { $sum: 1 } } }
-      ])
+      ]),
+
+      // ── 4. Invoices (all time) ───────────────────
+      Invoice.find({ studentId }).lean()
     ]);
 
     // ── Calculate attendance % ─────────────────────
     const totalDays = attendanceHistory.length;
     const presentDays = attendanceHistory.filter(a => a.status === 'PRESENT').length;
     const attendancePct = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+    // ── Calculate finance stats for student ────────
+    let pendingDues = 0;
+    let totalPaid = 0;
+    let skippedMeals = 0;
+
+    invoices.forEach(b => {
+      totalPaid += b.amountPaid;
+      pendingDues += (b.totalAmount - b.amountPaid);
+      skippedMeals += b.skippedMeals || 0;
+    });
 
     // ── Build attendance timeline for chart ────────
     // Groups records by week for a cleaner chart
@@ -381,6 +438,11 @@ const getStudentAnalytics = async (req, res, next) => {
         complaints: {
           total: Object.values(complaintMap).reduce((a, b) => a + b, 0),
           ...complaintMap
+        },
+        finance: {
+          pendingDues,
+          totalPaid,
+          skippedMeals
         }
       }
     });

@@ -89,6 +89,10 @@ export default function SidebarLayout() {
                 <Link to={user?.role === 'ADMIN' ? '/admin/analytics' : '/warden/analytics'} className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-cyan-400">
                   Detailed Analytics
                 </Link>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Mess Operations</div>
+                <Link to="/warden/mess" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-yellow-500">
+                  Mess & Billing Portal
+                </Link>
               </>
             )}
 
@@ -122,6 +126,22 @@ export default function SidebarLayout() {
                 <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Reports & Analytics</div>
                 <Link to="/student/analytics" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-cyan-400">
                   My Performance
+                </Link>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Finance & Bills</div>
+                <Link to="/student/billing" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-emerald-500">
+                  My Fees & Bills
+                </Link>
+              </>
+            )}
+            {user?.role === 'PARENT' && (
+              <>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Monitoring</div>
+                <Link to="/parent/dashboard" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-indigo-400">
+                  Guardian Dashboard
+                </Link>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Account</div>
+                <Link to="/parent/change-password" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Change Password
                 </Link>
               </>
             )}
