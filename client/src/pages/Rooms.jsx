@@ -7,12 +7,14 @@ export default function Rooms() {
   const { user } = useContext(AuthContext);
   const [rooms, setRooms] = useState([]);
   const [hostels, setHostels] = useState([]);
-  const [selectedHostel, setSelectedHostel] = useState(user?.hostelId || '');
+  // user.hostelId is a populated object {_id, name, ...} after getMe populate().
+  // We must extract ._id for use in API URLs and state comparisons.
+  const [selectedHostel, setSelectedHostel] = useState(user?.hostelId?._id || '');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    hostelId: user?.hostelId || '',
+    hostelId: user?.hostelId?._id || '', // Extract ._id from populated object,
     roomNumber: '',
     floor: 1,
     capacity: 2,
@@ -39,7 +41,7 @@ export default function Rooms() {
           setFormData(prev => ({ ...prev, hostelId: hRes.data.hostels[0]._id }));
         }
       }
-      // For Wardens, selectedHostel is already initialized to user.hostelId,
+      // For Wardens, selectedHostel is already initialized to user.hostelId._id (the string ID),
       // so the second useEffect will handle the initial fetch automatically.
     } catch (error) {
       toast.error('Failed to initialize data');
@@ -126,52 +128,65 @@ export default function Rooms() {
 
       {loading ? (
         <div className="text-center p-10">Loading rooms...</div>
+      ) : rooms.length === 0 ? (
+        <div className="text-center p-10 text-gray-500 bg-white shadow rounded border">No rooms found in this hostel.</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map(room => {
-            const occupancyPct = Math.round((room.occupiedBeds / room.capacity) * 100);
-            return (
-              <div key={room._id} className="bg-white p-6 rounded shadow border relative overflow-hidden">
-                {/* Occupancy Indicator Bar */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-gray-200">
-                  <div className={`h-full ${occupancyPct === 100 ? 'bg-red-500' : occupancyPct > 50 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${occupancyPct}%` }}></div>
-                </div>
-
-                <div className="flex justify-between items-start mb-4 mt-2">
-                  <div>
-                    <h3 className="text-xl font-bold">Room {room.roomNumber}</h3>
-                    <span className="text-xs text-gray-500">Floor {room.floor}</span>
-                  </div>
-                  <span className="px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                    {room.roomType}
-                  </span>
-                </div>
-                
-                <div className="text-sm mb-4 space-y-1">
-                  <div className="flex justify-between border-b pb-1">
-                    <span className="text-gray-600">Capacity:</span>
-                    <span className="font-bold">{room.capacity} Beds</span>
-                  </div>
-                  <div className="flex justify-between border-b pb-1">
-                    <span className="text-gray-600">Occupied:</span>
-                    <span className="font-bold text-red-600">{room.occupiedBeds} Beds</span>
-                  </div>
-                  <div className="flex justify-between pb-1">
-                    <span className="text-gray-600">Available:</span>
-                    <span className="font-bold text-green-600">{room.availableBeds} Beds</span>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center border-t pt-4">
-                  <span className="text-xs text-gray-500">{room.students.length} Students Assigned</span>
-                  <button onClick={() => handleDelete(room._id)} className="text-red-600 text-sm font-bold hover:underline">
-                    Delete
-                  </button>
-                </div>
+        <div className="space-y-8">
+          {[...new Set(rooms.map(r => r.floor))].sort((a, b) => a - b).map(floor => (
+            <div key={floor} className="bg-white rounded-lg shadow border overflow-hidden">
+              <div className="bg-gray-800 text-white p-4 font-bold text-lg flex justify-between items-center">
+                <span>Floor {floor}</span>
+                <span className="text-sm bg-gray-700 px-3 py-1 rounded">
+                  {rooms.filter(r => r.floor === floor).length} Rooms
+                </span>
               </div>
-            );
-          })}
-          {rooms.length === 0 && <div className="col-span-full text-center p-10 text-gray-500 bg-white shadow rounded">No rooms found in this hostel.</div>}
+              <div className="p-6 bg-gray-50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {rooms.filter(r => r.floor === floor).map(room => {
+                  const occupancyPct = Math.round((room.occupiedBeds / room.capacity) * 100);
+                  return (
+                    <div key={room._id} className="bg-white p-5 rounded-xl shadow-sm border hover:shadow-md transition relative overflow-hidden">
+                      {/* Occupancy Indicator Bar */}
+                      <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-100">
+                        <div className={`h-full ${occupancyPct === 100 ? 'bg-red-500' : occupancyPct > 50 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${occupancyPct}%` }}></div>
+                      </div>
+
+                      <div className="flex justify-between items-start mb-4 mt-2">
+                        <div>
+                          <h3 className="text-2xl font-black text-gray-800">Room {room.roomNumber}</h3>
+                          <span className="text-xs text-gray-500 uppercase tracking-wider">{room.gender} • {room.roomType}</span>
+                        </div>
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${occupancyPct === 100 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                          {occupancyPct === 100 ? 'FULL' : 'AVAILABLE'}
+                        </span>
+                      </div>
+                      
+                      <div className="text-sm mb-4 space-y-2 bg-gray-50 p-3 rounded">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Capacity:</span>
+                          <span className="font-bold">{room.capacity} Beds</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Occupied:</span>
+                          <span className="font-bold text-red-600">{room.occupiedBeds} Beds</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Available:</span>
+                          <span className="font-bold text-green-600">{room.availableBeds} Beds</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center border-t pt-4">
+                        <span className="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded">{room.students.length} Assigned</span>
+                        <button onClick={() => handleDelete(room._id)} className="text-red-500 text-sm font-bold hover:text-red-700 transition">
+                          Delete Room
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

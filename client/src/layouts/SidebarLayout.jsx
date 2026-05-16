@@ -21,13 +21,13 @@ export default function SidebarLayout() {
         </div>
         
         <div className="flex-1 p-4">
-          <div className="flex items-center gap-3 bg-gray-800 p-3 rounded-lg mb-6">
+          <Link to="/profile" className="flex items-center gap-3 bg-gray-800 hover:bg-gray-700 transition p-3 rounded-lg mb-6 cursor-pointer">
             <UserIcon className="text-gray-400" size={24} />
             <div>
               <div className="text-sm font-semibold truncate">{user?.fullName}</div>
               <div className="text-xs text-gray-400">{user?.role}</div>
             </div>
-          </div>
+          </Link>
           
           <nav className="space-y-2 text-sm flex flex-col">
             <Link to={`/${user?.role?.toLowerCase()}`} className="bg-blue-600 text-white p-2 rounded cursor-pointer text-center font-medium shadow hover:bg-blue-700 transition">

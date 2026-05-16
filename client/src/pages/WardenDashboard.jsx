@@ -49,6 +49,7 @@ export default function WardenDashboard() {
           <div className="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">Returned Today</div>
           <div className="text-4xl font-bold text-gray-800">{stats?.returnedToday || 0}</div>
         </div>
+      </div>
       <h3 className="text-xl font-bold mb-4 mt-8">Today's Attendance Snapshot</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white p-4 rounded shadow border-t-4 border-green-500">

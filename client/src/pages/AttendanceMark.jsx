@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 export default function AttendanceMark() {
   const { user } = useContext(AuthContext);
   const [rooms, setRooms] = useState([]);
+  const [selectedFloor, setSelectedFloor] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [students, setStudents] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState({});
@@ -27,7 +28,8 @@ export default function AttendanceMark() {
           setRooms(rRes.data.rooms);
         }
       } else {
-        const rRes = await api.get(`/rooms/hostel/${user.hostelId}`);
+        // user.hostelId is a populated object after getMe populate(); extract ._id for URL
+        const rRes = await api.get(`/rooms/hostel/${user.hostelId?._id}`);
         setRooms(rRes.data.rooms);
       }
     } catch (error) {
@@ -41,8 +43,8 @@ export default function AttendanceMark() {
     if (!roomId) return;
     setFetchingStudents(true);
     try {
-      // First get the students in the room
-      const res = await api.get(`/students/hostel?roomId=${roomId}`);
+      // First get the approved students in the room
+      const res = await api.get(`/students?roomId=${roomId}&approvalStatus=APPROVED`);
       setStudents(res.data.students);
       
       // Initialize attendance state (default all PRESENT)
@@ -145,17 +147,35 @@ export default function AttendanceMark() {
                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
-            
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-sm font-bold text-gray-700 mb-1">Select Floor</label>
+              <select 
+                value={selectedFloor} 
+                onChange={(e) => {
+                  setSelectedFloor(e.target.value);
+                  setSelectedRoomId(''); // Reset room when floor changes
+                  setStudents([]);
+                }}
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+                <option value="">-- Select Floor --</option>
+                {[...new Set(rooms.map(r => r.floor))].sort((a, b) => a - b).map(floor => (
+                  <option key={floor} value={floor}>Floor {floor}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-bold text-gray-700 mb-1">Select Room</label>
               <select 
                 value={selectedRoomId} 
                 onChange={(e) => setSelectedRoomId(e.target.value)}
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                disabled={!selectedFloor}
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
               >
                 <option value="">-- Select Room --</option>
-                {rooms.map(r => (
-                  <option key={r._id} value={r._id}>Room {r.roomNumber} (Floor {r.floor})</option>
+                {rooms.filter(r => r.floor.toString() === selectedFloor.toString()).map(r => (
+                  <option key={r._id} value={r._id}>Room {r.roomNumber}</option>
                 ))}
               </select>
             </div>

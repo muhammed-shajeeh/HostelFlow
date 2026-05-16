@@ -177,11 +177,48 @@ const login = async (req, res, next) => {
 // @access  Private
 const getMe = async (req, res, next) => {
   try {
-    // req.user is already attached by auth middleware and password excluded
+    // Populate hostel and room details for the profile/dashboard
+    const user = await User.findById(req.user._id)
+      .select('-password -emailOtp -emailOtpExpiry')
+      .populate('hostelId', 'name hostelCode')
+      .populate('roomId', 'roomNumber floor');
+
     res.status(200).json({
       success: true,
-      user: req.user
+      user
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update current user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res, next) => {
+  try {
+    const { fullName, department, year, semester, parentName, parentEmail } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (fullName) user.fullName = fullName;
+    if (department) user.department = department;
+    if (year) user.year = year;
+    if (semester) user.semester = semester;
+    if (parentName) user.parentName = parentName;
+    if (parentEmail) user.parentEmail = parentEmail;
+
+    await user.save();
+
+    const updatedUser = await User.findById(req.user._id)
+      .select('-password -emailOtp -emailOtpExpiry')
+      .populate('hostelId', 'name hostelCode')
+      .populate('roomId', 'roomNumber floor');
+
+    res.status(200).json({ success: true, message: 'Profile updated successfully', user: updatedUser });
   } catch (error) {
     next(error);
   }
@@ -191,5 +228,6 @@ module.exports = {
   register,
   verifyEmail,
   login,
-  getMe
+  getMe,
+  updateProfile
 };

@@ -627,6 +627,14 @@ if (req.user.role === 'WARDEN') {
   query.hostelId = req.user.hostelId;
 }
 
+if (req.query.roomId) {
+  query.roomId = req.query.roomId;
+}
+
+if (req.query.approvalStatus) {
+  query.approvalStatus = req.query.approvalStatus;
+}
+
 const students = await User.find(query)
   .populate('roomId', 'roomNumber floor')
   .lean(); // Optimization: lean()

@@ -34,6 +34,10 @@ import AttendanceMark from './pages/AttendanceMark';
 import AttendanceSummary from './pages/AttendanceSummary';
 import StudentAttendance from './pages/StudentAttendance';
 
+// Profile
+import Profile from './pages/Profile';
+import EditProfile from './pages/EditProfile';
+
 function App() {
   return (
     <AuthProvider>
@@ -51,6 +55,11 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<SidebarLayout />}>
               {/* Role Specific Routes */}
+              <Route element={<RoleProtectedRoute allowedRoles={['ADMIN', 'WARDEN', 'STUDENT', 'PARENT']} />}>
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/profile/edit" element={<EditProfile />} />
+              </Route>
+
               <Route element={<RoleProtectedRoute allowedRoles={['ADMIN']} />}>
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/hostels" element={<AdminHostels />} />

@@ -53,7 +53,29 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded shadow border-t-4 border-blue-500 lg:col-span-3">
+              <h3 className="text-gray-500 text-sm font-bold uppercase mb-4">My Allocation Details</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <div className="text-xs text-gray-500">Hostel</div>
+                  <div className="font-bold">{user?.hostelId?.name || 'Assigned'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Room</div>
+                  <div className="font-bold">{user?.roomId?.roomNumber || 'TBA'} (Floor {user?.roomId?.floor || '-'})</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Department</div>
+                  <div className="font-bold">{user?.department || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500">Semester</div>
+                  <div className="font-bold">{user?.semester || 'N/A'}</div>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white p-6 rounded shadow border-t-4 border-purple-500">
               <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Current Leave Status</h3>
               {activeLeave ? (
@@ -77,12 +99,12 @@ export default function StudentDashboard() {
               <Link to="/student/leaves/history" className="mt-4 inline-block text-sm text-gray-600 font-bold hover:underline">View History &rarr;</Link>
             </div>
 
-            <div className="bg-white p-6 rounded shadow border-t-4 border-green-500 md:col-span-2">
+            <div className="bg-white p-6 rounded shadow border-t-4 border-green-500">
               <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Overall Attendance Rate</h3>
               <div className="flex justify-between items-end">
                 <div className={`text-5xl font-black ${attendancePct >= 75 ? 'text-green-600' : 'text-red-600'}`}>{attendancePct !== null ? attendancePct : 0}%</div>
-                <Link to="/student/attendance" className="inline-block text-sm text-green-700 font-bold hover:underline">View Daily Logs &rarr;</Link>
               </div>
+              <Link to="/student/attendance" className="mt-4 inline-block text-sm text-green-700 font-bold hover:underline">View Daily Logs &rarr;</Link>
             </div>
           </div>
         </div>

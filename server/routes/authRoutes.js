@@ -1,6 +1,6 @@
 const express = require('express');
 const { check } = require('express-validator');
-const { register, verifyEmail, login, getMe } = require('../controllers/authController');
+const { register, verifyEmail, login, getMe, updateProfile } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -39,5 +39,8 @@ router.post(
 
 // @route   GET /api/auth/me
 router.get('/me', authMiddleware, getMe);
+
+// @route   PUT /api/auth/profile
+router.put('/profile', authMiddleware, updateProfile);
 
 module.exports = router;
