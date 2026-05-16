@@ -347,43 +347,6 @@ export default function WardenMessManagement() {
     }
   };
 
-  const fetchUnpaidDues = async () => {
-    setLoadingUnpaid(true);
-    try {
-      const studentRes = await api.get('/students');
-      const students = studentRes.data.students || [];
-
-      const unpaidRecords = [];
-      await Promise.all(students.map(async (student) => {
-        const dueRes = await api.get(`/mess/dues/${student._id}`);
-        let pendingTotal = 0;
-        
-        (dueRes.data.invoices || []).forEach(inv => {
-          if (inv.status !== 'PAID') {
-            pendingTotal += (inv.totalAmount - inv.amountPaid);
-          }
-        });
-
-        if (pendingTotal > 0) {
-          unpaidRecords.push({
-            studentId: student._id,
-            fullName: student.fullName,
-            room: student.roomId?.roomNumber || 'Unassigned',
-            admissionNumber: student.admissionNumber,
-            pendingAmount: pendingTotal,
-            financialHold: dueRes.data.financialHold
-          });
-        }
-      }));
-
-      setUnpaidList(unpaidRecords.sort((a, b) => b.pendingAmount - a.pendingAmount));
-    } catch (error) {
-      toast.error('Failed to load unpaid dues list.');
-    } finally {
-      setLoadingUnpaid(false);
-    }
-  };
-
   const handleSendReminder = async (invoiceId) => {
     const reason = window.prompt("Enter reminder notification audit notes:");
     if (reason === null) return;
