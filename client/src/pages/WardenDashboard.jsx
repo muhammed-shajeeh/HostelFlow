@@ -134,6 +134,14 @@ export default function WardenDashboard() {
             <Link to="/notices/create" className="bg-indigo-600 text-white px-3 py-1.5 rounded font-bold hover:bg-indigo-700 transition text-sm">+ Post Notice</Link>
           </div>
         </div>
+
+        <div className="bg-white p-6 rounded shadow">
+          <h3 className="text-lg font-bold mb-4">Reports & Analytics</h3>
+          <p className="text-gray-600 text-sm mb-4">Access detailed trends for attendance, complaints, and room occupancy. Generate CSV reports for administration.</p>
+          <div className="flex gap-3">
+            <Link to="/warden/analytics" className="bg-cyan-600 text-white px-4 py-2 rounded shadow font-bold hover:bg-cyan-700 transition text-sm">View Analytics</Link>
+          </div>
+        </div>
       </div>
     </div>
   );

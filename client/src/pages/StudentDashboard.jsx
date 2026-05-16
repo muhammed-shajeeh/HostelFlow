@@ -152,6 +152,13 @@ export default function StudentDashboard() {
               )}
               <Link to="/notices" className="mt-4 inline-block text-sm text-indigo-600 font-bold hover:underline">View All Notices &rarr;</Link>
             </div>
+
+            {/* Analytics Shortcut Widget */}
+            <div className="bg-white p-6 rounded shadow border-t-4 border-cyan-400">
+              <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Performance Insights</h3>
+              <p className="text-gray-600 text-sm mb-4">View your detailed attendance trends, leave history, and complaint status graphs.</p>
+              <Link to="/student/analytics" className="inline-block text-sm text-cyan-600 font-bold hover:underline">Full Reports &rarr;</Link>
+            </div>
           </div>
         </div>
       )}

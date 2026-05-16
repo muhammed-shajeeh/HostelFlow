@@ -85,6 +85,10 @@ export default function SidebarLayout() {
                 <Link to="/notices/create" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
                   Post Notice
                 </Link>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Reports & Analytics</div>
+                <Link to={user?.role === 'ADMIN' ? '/admin/analytics' : '/warden/analytics'} className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-cyan-400">
+                  Detailed Analytics
+                </Link>
               </>
             )}
 
@@ -114,6 +118,10 @@ export default function SidebarLayout() {
                 <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Noticeboard</div>
                 <Link to="/notices" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-indigo-400">
                   View Notices
+                </Link>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Reports & Analytics</div>
+                <Link to="/student/analytics" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-cyan-400">
+                  My Performance
                 </Link>
               </>
             )}

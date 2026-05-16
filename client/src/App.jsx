@@ -48,6 +48,11 @@ import Notices from './pages/Notices';
 import NoticeCreate from './pages/NoticeCreate';
 import NoticeManagement from './pages/NoticeManagement';
 
+// Analytics
+import AdminAnalytics from './pages/AdminAnalytics';
+import WardenAnalytics from './pages/WardenAnalytics';
+import StudentAnalytics from './pages/StudentAnalytics';
+
 function App() {
   return (
     <AuthProvider>
@@ -97,6 +102,10 @@ function App() {
                 {/* Notices (Warden/Admin) */}
                 <Route path="/notices/manage" element={<NoticeManagement />} />
                 <Route path="/notices/create" element={<NoticeCreate />} />
+
+                {/* Analytics (Warden/Admin) */}
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/warden/analytics" element={<WardenAnalytics />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
@@ -115,6 +124,9 @@ function App() {
 
                 {/* Notices (Student) */}
                 <Route path="/notices" element={<Notices />} />
+
+                {/* Analytics (Student) */}
+                <Route path="/student/analytics" element={<StudentAnalytics />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>
