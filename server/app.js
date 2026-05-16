@@ -16,6 +16,9 @@ const noticeRoutes = require('./routes/noticeRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const parentRoutes = require('./routes/parentRoutes');
 const messRoutes = require('./routes/messRoutes');
+const securityRoutes = require('./routes/securityRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -62,6 +65,9 @@ app.use('/api/notices', noticeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/parent', parentRoutes);
 app.use('/api/mess', messRoutes);
+app.use('/api/security-gate', securityRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/notifications', notificationRoutes);
 // Error handling middleware
 app.use(errorHandler);
 

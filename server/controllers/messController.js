@@ -1289,11 +1289,22 @@ const getLedger = async (req, res, next) => {
 
     const [invoices, payments, auditLogs] = await Promise.all([
       Invoice.find(query).sort({ month: -1 }).lean(),
-      Payment.find(query).populate('studentId', 'fullName admissionNumber').sort({ paidAt: -1 }).lean(),
+      Payment.find(query)
+        .populate('studentId', 'fullName admissionNumber')
+        .populate('hostelId', 'name')
+        .populate('invoiceId', 'month status')
+        .sort({ createdAt: -1 })
+        .lean(),
       FinancialAuditLog.find(query).populate('actorId', 'fullName').sort({ createdAt: -1 }).limit(100).lean()
     ]);
 
-    res.status(200).json({ success: true, invoices, payments, auditLogs });
+    res.status(200).json({ 
+      success: true, 
+      invoices, 
+      payments, 
+      transactions: payments, 
+      auditLogs 
+    });
   } catch (error) { next(error); }
 };
 

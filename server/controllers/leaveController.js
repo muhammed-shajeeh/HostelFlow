@@ -3,6 +3,8 @@ const User = require('../models/User');
 const crypto = require('crypto');
 const qrcode = require('qrcode');
 const sendEmail = require('../utils/email');
+const ScanLog = require('../models/ScanLog');
+const { createAndEmitNotification, emitToRoom } = require('../utils/socket');
 
 // ======================================================
 // REQUEST LEAVE (STUDENT)
@@ -50,6 +52,21 @@ const requestLeave = async (req, res, next) => {
       expectedReturnDate,
       isEmergency: isEmergency || false
     });
+
+    // Notify all wardens in the student's hostel and emit real-time event
+    const wardens = await User.find({ role: 'WARDEN', hostelId: student.hostelId }).select('_id').lean();
+    for (const warden of wardens) {
+      await createAndEmitNotification({
+        recipientId: warden._id,
+        title: 'New Leave Request',
+        message: `${student.fullName} has requested a new ${leaveType} leave.`,
+        type: 'LEAVE_REQUESTED',
+        actionUrl: '/leaves/pending',
+        hostelId: student.hostelId
+      });
+    }
+    emitToRoom(`HOSTEL_${student.hostelId}`, 'REFRESH_DASHBOARD', { type: 'LEAVE_REQUESTED' });
+    emitToRoom('ADMIN_GLOBAL', 'REFRESH_DASHBOARD', { type: 'LEAVE_REQUESTED' });
 
     res.status(201).json({ success: true, message: 'Leave requested successfully.', leave });
     console.timeEnd('requestLeaveAPI');
@@ -136,6 +153,18 @@ const approveLeave = async (req, res, next) => {
 
     await leave.save();
 
+    // Notify student about leave approval
+    await createAndEmitNotification({
+      recipientId: leave.studentId._id,
+      title: 'Leave Request Approved',
+      message: `Your outpass for ${new Date(leave.departureDate).toDateString()} is approved.`,
+      type: 'LEAVE_APPROVED',
+      actionUrl: '/student/leaves/history',
+      hostelId: leave.hostelId
+    });
+    emitToRoom(`STUDENT_${leave.studentId._id}`, 'LEAVE_STATUS_UPDATED', leave);
+    emitToRoom(`HOSTEL_${leave.hostelId}`, 'REFRESH_DASHBOARD', { type: 'LEAVE_APPROVED' });
+
     // Send Approval Email with QR Embedded
     const emailHtml = `
       <div style="font-family: Arial; padding:20px;">
@@ -186,6 +215,18 @@ const rejectLeave = async (req, res, next) => {
     leave.rejectionReason = rejectionReason;
     await leave.save();
 
+    // Notify student about leave rejection
+    await createAndEmitNotification({
+      recipientId: leave.studentId._id,
+      title: 'Leave Request Rejected',
+      message: `Your outpass request was rejected: "${rejectionReason}"`,
+      type: 'LEAVE_REJECTED',
+      actionUrl: '/student/leaves/history',
+      hostelId: leave.hostelId
+    });
+    emitToRoom(`STUDENT_${leave.studentId._id}`, 'LEAVE_STATUS_UPDATED', leave);
+    emitToRoom(`HOSTEL_${leave.hostelId}`, 'REFRESH_DASHBOARD', { type: 'LEAVE_REJECTED' });
+
     const emailHtml = `
       <div style="font-family: Arial; padding:20px;">
         <h2>Leave Rejected</h2>
@@ -204,21 +245,80 @@ const rejectLeave = async (req, res, next) => {
 };
 
 // ======================================================
-// VERIFY QR CODE (WARDEN/ADMIN)
+// VERIFY QR CODE (WARDEN / ADMIN / SECURITY)
 // ======================================================
 const verifyQR = async (req, res, next) => {
   try {
     const { qrToken } = req.body;
 
-    if (!qrToken) return res.status(400).json({ success: false, message: 'QR Token is required' });
+    if (!qrToken) {
+      return res.status(400).json({ success: false, message: 'QR Token is required.' });
+    }
 
-    const leave = await Leave.findOne({ qrToken }).populate('studentId', 'fullName admissionNumber roomId');
+    const qrTokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
 
-    if (!leave) return res.status(404).json({ success: false, message: 'Invalid or Expired QR Token' });
+    // Helper to log all gate scan attempts
+    const saveScanLog = async (action, success, errorMessage = null, studentId = null, leaveHostelId = null) => {
+      try {
+        await ScanLog.create({
+          scannerId: req.user._id,
+          hostelId: leaveHostelId || req.user.hostelId,
+          studentId,
+          action,
+          success,
+          errorMessage,
+          qrTokenHash
+        });
+      } catch (err) {
+        console.error('ScanLog creation failed:', err);
+      }
+    };
 
-    // Enforce Hostel Isolation
-    if (req.user.role === 'WARDEN' && req.user.hostelId.toString() !== leave.hostelId.toString()) {
-      return res.status(403).json({ success: false, message: 'This pass does not belong to your hostel.' });
+    // If token ends with -expired, it's a direct duplicate attempt
+    if (qrToken.endsWith('-expired')) {
+      await saveScanLog('FAILED', false, 'Duplicate scan: token was already completed and invalidated.');
+      return res.status(400).json({
+        success: false,
+        warningType: 'DUPLICATE',
+        message: 'Warning: This QR pass has already been used and completed.'
+      });
+    }
+
+    const leave = await Leave.findOne({ qrToken })
+      .populate('studentId', 'fullName admissionNumber roomId')
+      .populate('roomId', 'roomNumber');
+
+    if (!leave) {
+      await saveScanLog('FAILED', false, 'Invalid or unrecognized QR token.');
+      return res.status(404).json({ success: false, message: 'Invalid or unrecognized QR Token.' });
+    }
+
+    // Enforce Hostel Isolation for WARDEN and SECURITY roles
+    const userHostelIdStr = req.user.hostelId ? req.user.hostelId.toString() : '';
+    const leaveHostelIdStr = leave.hostelId ? leave.hostelId.toString() : '';
+
+    if ((req.user.role === 'WARDEN' || req.user.role === 'SECURITY') && userHostelIdStr !== leaveHostelIdStr) {
+      await saveScanLog('FAILED', false, 'Access Denied: Pass belongs to a different hostel.', leave.studentId?._id, leave.hostelId);
+      return res.status(403).json({ success: false, message: 'This pass belongs to a student of another hostel.' });
+    }
+
+    if (leave.status === 'RETURNED') {
+      await saveScanLog('FAILED', false, 'Duplicate scan attempt: leave already completed.', leave.studentId?._id, leave.hostelId);
+      return res.status(400).json({
+        success: false,
+        warningType: 'DUPLICATE',
+        message: 'Duplicate Scan Warning: This leave has already been completed and the student returned.'
+      });
+    }
+
+    if (leave.status === 'REJECTED') {
+      await saveScanLog('FAILED', false, 'Scan attempt on rejected leave request.', leave.studentId?._id, leave.hostelId);
+      return res.status(400).json({ success: false, message: 'This leave request was rejected by management.' });
+    }
+
+    if (leave.status === 'PENDING') {
+      await saveScanLog('FAILED', false, 'Scan attempt on non-approved leave request.', leave.studentId?._id, leave.hostelId);
+      return res.status(400).json({ success: false, message: 'This leave request is still pending approval.' });
     }
 
     if (leave.status === 'APPROVED') {
@@ -227,33 +327,103 @@ const verifyQR = async (req, res, next) => {
       leave.exitedAt = new Date();
       leave.securityVerifiedBy = req.user._id;
       await leave.save();
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: 'Exit marked successfully.', 
-        action: 'EXIT',
-        student: leave.studentId.fullName 
+
+      await saveScanLog('EXIT', true, null, leave.studentId?._id, leave.hostelId);
+
+      // Notify student
+      await createAndEmitNotification({
+        recipientId: leave.studentId._id,
+        title: 'Exit Marked at Gate',
+        message: 'Your gate exit pass was scanned and verified successfully.',
+        type: 'QR_EXIT_MARKED',
+        actionUrl: '/student/leaves/history',
+        hostelId: leave.hostelId
       });
-    } 
-    
+
+      // Find parents and notify them
+      const parents = await User.find({ role: 'PARENT', students: leave.studentId._id }).select('_id').lean();
+      for (const parent of parents) {
+        await createAndEmitNotification({
+          recipientId: parent._id,
+          title: 'Child Exit Alert',
+          message: `${leave.studentId.fullName} has successfully checked out of the hostel gates.`,
+          type: 'QR_EXIT_MARKED',
+          actionUrl: '/parent/dashboard',
+          hostelId: leave.hostelId
+        });
+      }
+
+      // Live update dashboard metrics
+      emitToRoom(`HOSTEL_${leave.hostelId}`, 'REFRESH_DASHBOARD', { type: 'QR_EXIT_MARKED' });
+      emitToRoom(`STUDENT_${leave.studentId._id}`, 'LEAVE_STATUS_UPDATED', leave);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Exit authorized successfully.',
+        action: 'EXIT',
+        student: {
+          fullName: leave.studentId.fullName,
+          admissionNumber: leave.studentId.admissionNumber,
+          roomNumber: leave.roomId?.roomNumber || 'Unassigned',
+          hostelId: leave.hostelId
+        },
+        timestamp: leave.exitedAt
+      });
+    }
+
     if (leave.status === 'EXITED') {
       // Student is returning
       leave.status = 'RETURNED';
       leave.returnedAt = new Date();
       
-      // Invalidate the token to prevent reuse
+      // Invalidate the token to prevent any future reuse
       leave.qrToken = crypto.randomBytes(16).toString('hex') + '-expired';
-      
       await leave.save();
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: 'Return marked successfully. Pass expired.', 
+
+      await saveScanLog('RETURN', true, null, leave.studentId?._id, leave.hostelId);
+
+      // Notify student
+      await createAndEmitNotification({
+        recipientId: leave.studentId._id,
+        title: 'Return Marked at Gate',
+        message: 'Your gate return check-in was verified successfully. Welcome back!',
+        type: 'QR_RETURN_MARKED',
+        actionUrl: '/student/leaves/history',
+        hostelId: leave.hostelId
+      });
+
+      // Find parents and notify them
+      const parents = await User.find({ role: 'PARENT', students: leave.studentId._id }).select('_id').lean();
+      for (const parent of parents) {
+        await createAndEmitNotification({
+          recipientId: parent._id,
+          title: 'Child Return Alert',
+          message: `${leave.studentId.fullName} has returned safely to the hostel.`,
+          type: 'QR_RETURN_MARKED',
+          actionUrl: '/parent/dashboard',
+          hostelId: leave.hostelId
+        });
+      }
+
+      // Live update dashboard metrics
+      emitToRoom(`HOSTEL_${leave.hostelId}`, 'REFRESH_DASHBOARD', { type: 'QR_RETURN_MARKED' });
+      emitToRoom(`STUDENT_${leave.studentId._id}`, 'LEAVE_STATUS_UPDATED', leave);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Return authorized successfully. Pass completed and invalidated.',
         action: 'RETURN',
-        student: leave.studentId.fullName 
+        student: {
+          fullName: leave.studentId.fullName,
+          admissionNumber: leave.studentId.admissionNumber,
+          roomNumber: leave.roomId?.roomNumber || 'Unassigned',
+          hostelId: leave.hostelId
+        },
+        timestamp: leave.returnedAt
       });
     }
 
+    await saveScanLog('FAILED', false, 'Unhandled status code transition.', leave.studentId?._id, leave.hostelId);
     return res.status(400).json({ success: false, message: 'This pass is not active or has already been completed.' });
   } catch (error) { next(error); }
 };

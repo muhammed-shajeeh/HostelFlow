@@ -48,8 +48,8 @@ router.put('/:id/reject',
   rejectLeave
 );
 
-// This can also be accessed by SECURITY guards if we add a SECURITY role later
-router.post('/verify-qr', roleMiddleware('ADMIN', 'WARDEN'), verifyQR);
+// This can be accessed by ADMIN, WARDEN, and SECURITY role
+router.post('/verify-qr', roleMiddleware('ADMIN', 'WARDEN', 'SECURITY'), verifyQR);
 
 // ======================================================
 // DASHBOARD STATS

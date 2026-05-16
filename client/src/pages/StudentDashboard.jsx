@@ -71,6 +71,16 @@ export default function StudentDashboard() {
     return () => clearInterval(interval);
   }, [user]);
 
+  useEffect(() => {
+    const handleRefresh = (e) => {
+      console.log('[Student Dashboard] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchStats();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    return () => window.removeEventListener('erp:refresh', handleRefresh);
+  }, []);
+
   const handleToggleTomorrowMeal = async (meal) => {
     try {
       const res = await api.post('/mess/toggle-tomorrow', { meal });

@@ -10,26 +10,37 @@ export default function WardenDashboard() {
   const [noticeStats, setNoticeStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchStats = async () => {
+    try {
+      const [statsRes, attRes, complaintRes, noticeRes] = await Promise.all([
+        api.get('/leaves/stats'),
+        api.get(`/attendance/summary?date=${new Date().toISOString().split('T')[0]}`),
+        api.get('/complaints/stats'),
+        api.get('/notices/stats')
+      ]);
+      setStats(statsRes.data.stats);
+      setAttendanceStats(attRes.data.summary);
+      setComplaintStats(complaintRes.data.stats);
+      setNoticeStats(noticeRes.data.stats);
+    } catch (error) {
+      toast.error('Failed to load dashboard stats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [statsRes, attRes, complaintRes, noticeRes] = await Promise.all([
-          api.get('/leaves/stats'),
-          api.get(`/attendance/summary?date=${new Date().toISOString().split('T')[0]}`),
-          api.get('/complaints/stats'),
-          api.get('/notices/stats')
-        ]);
-        setStats(statsRes.data.stats);
-        setAttendanceStats(attRes.data.summary);
-        setComplaintStats(complaintRes.data.stats);
-        setNoticeStats(noticeRes.data.stats);
-      } catch (error) {
-        toast.error('Failed to load dashboard stats');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const handleRefresh = (e) => {
+      console.log('[Warden Dashboard] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchStats();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    return () => window.removeEventListener('erp:refresh', handleRefresh);
   }, []);
 
   if (loading) return <div className="p-10 text-center">Loading Dashboard...</div>;
@@ -99,12 +110,6 @@ export default function WardenDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded shadow">
-          <h3 className="text-lg font-bold mb-4">Security QR Scanner</h3>
-          <p className="text-gray-600 text-sm mb-4">Use the built-in scanner tool to verify student QR passes at the gate. This will automatically update their status from APPROVED to EXITED, or EXITED to RETURNED.</p>
-          <Link to="/leaves/scanner" className="bg-gray-900 text-white px-4 py-2 rounded shadow font-bold inline-block hover:bg-gray-800 transition">Open QR Scanner</Link>
-        </div>
-
         <div className="bg-white p-6 rounded shadow">
           <h3 className="text-lg font-bold mb-4">Student Management</h3>
           <p className="text-gray-600 text-sm mb-4">Manage new hostel applications and existing room allocations from the student directory.</p>

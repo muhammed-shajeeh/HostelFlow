@@ -125,36 +125,46 @@ const verifyEmail = async (req, res, next) => {
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
 const login = async (req, res, next) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
+    const { email, password } = req.body;
+    const inputIdentifier = (email || '').trim().toLowerCase();
+
+    if (!inputIdentifier || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide credentials.' });
     }
 
-    const { email, password } = req.body;
+    // Try finding by direct email
+    const user = await User.findOne({ email: inputIdentifier }).select('+password');
 
-    // We need to select password because it's disabled by default in schema
-    const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+    }
+
+    if (user.role === 'SECURITY') {
+      return res.status(403).json({ success: false, message: 'Security terminals must log in via the dedicated PIN gate terminal.' });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({ success: false, message: 'This account has been disabled.' });
     }
 
     if (!user.emailVerified) {
-      return res.status(403).json({ success: false, message: 'Please verify your email before logging in' });
+      return res.status(403).json({ success: false, message: 'Please verify your email before logging in.' });
     }
 
     if (user.role === 'STUDENT' && !user.isApproved) {
-      return res.status(403).json({ success: false, message: 'Your account is pending admin approval' });
+      return res.status(403).json({ success: false, message: 'Your account is pending admin approval.' });
     }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
 
     const token = generateToken(user._id, user.role, user.hostelId);
 
@@ -224,10 +234,81 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
+// @desc    PIN-based Security Gate login
+// @route   POST /api/auth/security-login
+// @access  Public
+const securityLogin = async (req, res, next) => {
+  try {
+    const { pin } = req.body;
+
+    if (!pin) {
+      return res.status(400).json({ success: false, message: 'PIN code is required.' });
+    }
+
+    // Validate PIN length and numeric constraint: strictly 6 digits
+    const pinStr = String(pin).trim();
+    if (!/^\d{6}$/.test(pinStr)) {
+      return res.status(400).json({ success: false, message: 'Security PIN must be exactly 6 numeric digits.' });
+    }
+
+    // Find all active security profiles
+    const guards = await User.find({ role: 'SECURITY', isActive: true }).populate('hostelId', 'name');
+
+    let matchedGuard = null;
+    for (const g of guards) {
+      const isMatch = await g.comparePin(pinStr);
+      if (isMatch) {
+        matchedGuard = g;
+        break;
+      }
+    }
+
+    if (matchedGuard) {
+      // Check lock
+      const now = new Date();
+      if (matchedGuard.loginLockUntil && now < matchedGuard.loginLockUntil) {
+        const remainingMin = Math.ceil((matchedGuard.loginLockUntil - now) / 1000 / 60);
+        return res.status(403).json({
+          success: false,
+          message: `Terminal is locked due to too many failed attempts. Try again in ${remainingMin} minute(s).`
+        });
+      }
+
+      // Success! Reset lock and failed attempts
+      matchedGuard.failedLoginAttempts = 0;
+      matchedGuard.loginLockUntil = undefined;
+      matchedGuard.securityLoginCount = (matchedGuard.securityLoginCount || 0) + 1;
+      matchedGuard.lastSecurityLogin = new Date();
+      await matchedGuard.save();
+
+      // Clean token generation
+      const token = generateToken(matchedGuard._id, 'SECURITY', matchedGuard.hostelId?._id);
+
+      const userObj = matchedGuard.toObject();
+      delete userObj.password;
+      delete userObj.securityPinHash;
+
+      return res.status(200).json({
+        success: true,
+        token,
+        user: userObj
+      });
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid PIN.'
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   verifyEmail,
   login,
   getMe,
-  updateProfile
+  updateProfile,
+  securityLogin
 };

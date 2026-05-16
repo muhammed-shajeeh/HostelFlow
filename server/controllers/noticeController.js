@@ -1,4 +1,6 @@
 const Notice = require('../models/Notice');
+const User = require('../models/User');
+const { createAndEmitNotification, emitToRoom, getIO } = require('../utils/socket');
 
 // ======================================================
 // NOTICE CONTROLLER
@@ -163,6 +165,38 @@ const createNotice = async (req, res, next) => {
       expiresAt: expiresAt || null,
       visibleTo: visibleTo || 'ALL'
     });
+
+    // Real-Time broadcasts & Database Alerts for Emergency Notices
+    if (priority === 'EMERGENCY') {
+      const studentQuery = { role: 'STUDENT' };
+      if (targetType === 'HOSTEL') studentQuery.hostelId = resolvedHostelId;
+      
+      const students = await User.find(studentQuery).select('_id').lean();
+      for (const student of students) {
+        await createAndEmitNotification({
+          recipientId: student._id,
+          title: '🚨 URGENT EMERGENCY NOTICE',
+          message: `Urgent Alert: "${title}". Please read immediately!`,
+          type: 'EMERGENCY_NOTICE',
+          actionUrl: '/notices',
+          hostelId: targetType === 'GLOBAL' ? null : resolvedHostelId
+        });
+      }
+    }
+
+    // Broadcast Notice Event
+    try {
+      const io = getIO();
+      if (targetType === 'GLOBAL') {
+        io.emit('NEW_NOTICE', notice);
+        io.emit('REFRESH_DASHBOARD', { type: 'NEW_NOTICE' });
+      } else {
+        io.to(`HOSTEL_${resolvedHostelId}`).emit('NEW_NOTICE', notice);
+        io.to(`HOSTEL_${resolvedHostelId}`).emit('REFRESH_DASHBOARD', { type: 'NEW_NOTICE' });
+      }
+    } catch (err) {
+      console.error('Socket notification broadcast failed:', err);
+    }
 
     res.status(201).json({
       success: true,

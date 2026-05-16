@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 
@@ -61,10 +62,15 @@ import ChangePassword from './pages/ChangePassword';
 import StudentBilling from './pages/StudentBilling';
 import WardenMessManagement from './pages/WardenMessManagement';
 
+// Security Gate Portal
+import WardenSecurityGate from './pages/WardenSecurityGate';
+import SecurityGateDashboard from './pages/SecurityGateDashboard';
+
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <SocketProvider>
+        <BrowserRouter>
         <Toaster position="top-right" />
         <Routes>
           <Route element={<NavbarLayout />}>
@@ -73,6 +79,9 @@ function App() {
             <Route path="/verify-otp" element={<VerifyOtp />} />
             <Route path="/" element={<div className="p-4 text-center mt-10 text-2xl font-bold">Welcome to Smart Hostel Management System</div>} />
           </Route>
+
+          {/* Standalone Gatekeeper Security Terminal with integrated PIN authentication */}
+          <Route path="/security" element={<SecurityGateDashboard />} />
           
           {/* Protected Routes Wrapper */}
           <Route element={<ProtectedRoute />}>
@@ -98,7 +107,6 @@ function App() {
                 {/* Leave Management (Warden/Admin) */}
                 <Route path="/leaves/pending" element={<PendingLeaves />} />
                 <Route path="/leaves/history" element={<LeaveHistory />} />
-                <Route path="/leaves/scanner" element={<QRScanner />} />
 
                 {/* Attendance (Warden/Admin) */}
                 <Route path="/attendance/mark" element={<AttendanceMark />} />
@@ -121,9 +129,13 @@ function App() {
                 <Route path="/admin/mess" element={<WardenMessManagement />} />
                 <Route path="/admin/billing" element={<WardenMessManagement />} />
               </Route>
+
+              <Route element={<RoleProtectedRoute allowedRoles={['WARDEN']} />}>
+                <Route path="/warden/security-gate" element={<WardenSecurityGate />} />
+              </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>
-                <Route path="/parent/dashboard" element={<ParentDashboard />} />
+                <Route path="/parent" element={<ParentDashboard />} />
                 <Route path="/parent/student/:id" element={<ParentStudentView />} />
                 <Route path="/parent/change-password" element={<ChangePassword />} />
               </Route>
@@ -153,15 +165,13 @@ function App() {
                 <Route path="/student/mess" element={<StudentBilling />} />
                 <Route path="/student/payments" element={<StudentBilling />} />
               </Route>
-              
-              <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>
-                <Route path="/parent" element={<ParentDashboard />} />
-              </Route>
+
             </Route>
           </Route>
           
         </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </SocketProvider>
     </AuthProvider>
   );
 }

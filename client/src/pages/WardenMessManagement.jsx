@@ -87,6 +87,18 @@ export default function WardenMessManagement() {
   });
   const [submittingOverride, setSubmittingOverride] = useState(false);
 
+  // Live Revenue Analytics States
+  const [paymentAnalytics, setPaymentAnalytics] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  // Global Transaction Ledger States
+  const [transactions, setTransactions] = useState([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+  // Receipt Modal States
+  const [receiptDetail, setReceiptDetail] = useState(null);
+  const [loadingReceipt, setLoadingReceipt] = useState(false);
+
   useEffect(() => {
     fetchTomorrowCounts();
     fetchBillingCycles();
@@ -94,7 +106,32 @@ export default function WardenMessManagement() {
     fetchFeeConfig();
     fetchMasterLedgerAndAudits();
     fetchStudents();
+    fetchPaymentAnalytics();
   }, []);
+
+  const fetchPaymentAnalytics = async () => {
+    setLoadingAnalytics(true);
+    try {
+      const res = await api.get('/payments/analytics');
+      setPaymentAnalytics(res.data.analytics);
+    } catch (err) {
+      console.warn('Analytics loading failed:', err.message);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  const openReceiptModal = async (paymentId) => {
+    setLoadingReceipt(true);
+    try {
+      const res = await api.get(`/mess/receipts/${paymentId}`);
+      setReceiptDetail(res.data.receipt);
+    } catch (error) {
+      toast.error('Failed to load transaction receipt.');
+    } finally {
+      setLoadingReceipt(false);
+    }
+  };
 
   const fetchTomorrowCounts = async () => {
     setLoadingCounts(true);
@@ -207,11 +244,15 @@ export default function WardenMessManagement() {
   };
 
   const fetchMasterLedgerAndAudits = async () => {
+    setLoadingTransactions(true);
     try {
       const res = await api.get('/mess/ledger');
       setAuditLogs(res.data.auditLogs || []);
+      setTransactions(res.data.transactions || res.data.payments || []);
     } catch (error) {
       console.log('Failed to fetch ledger logs', error);
+    } finally {
+      setLoadingTransactions(false);
     }
   };
 
@@ -503,6 +544,22 @@ export default function WardenMessManagement() {
           }`}
         >
           📜 Master Audit Trail Ledger
+        </button>
+        <button 
+          onClick={() => { setActiveTab('analytics'); fetchPaymentAnalytics(); }}
+          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
+            activeTab === 'analytics' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          }`}
+        >
+          📈 Live Revenue Analytics
+        </button>
+        <button 
+          onClick={() => { setActiveTab('transactions'); fetchMasterLedgerAndAudits(); }}
+          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
+            activeTab === 'transactions' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          }`}
+        >
+          💸 Transaction History Ledger
         </button>
       </div>
 
@@ -1007,6 +1064,222 @@ export default function WardenMessManagement() {
         </div>
       )}
 
+      {/* Tab: Live Revenue Analytics */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6 animate-fadeIn">
+          {loadingAnalytics ? (
+            <div className="text-center p-12 text-gray-400 italic">Compiling live transaction metrics...</div>
+          ) : !paymentAnalytics ? (
+            <div className="text-center p-12 text-gray-400 italic">No payment transactions recorded yet.</div>
+          ) : (
+            <>
+              {/* Analytics Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-6 rounded-2xl shadow text-white">
+                  <span className="block text-[10px] uppercase font-black tracking-wider text-green-100">Total Collections</span>
+                  <strong className="text-3xl font-black block mt-1">₹{paymentAnalytics.totalCollections || 0}</strong>
+                  <span className="text-[10px] text-green-50 font-semibold mt-2 block">All verified lifetime transactions</span>
+                </div>
+
+                <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-2xl shadow text-white">
+                  <span className="block text-[10px] uppercase font-black tracking-wider text-indigo-100">Today's Revenue</span>
+                  <strong className="text-3xl font-black block mt-1">₹{paymentAnalytics.todayCollections || 0}</strong>
+                  <span className="text-[10px] text-indigo-50 font-semibold mt-2 block">Verified in the last 24 hours</span>
+                </div>
+
+                <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-6 rounded-2xl shadow text-white">
+                  <span className="block text-[10px] uppercase font-black tracking-wider text-amber-100">Failed Payments</span>
+                  <strong className="text-3xl font-black block mt-1">{paymentAnalytics.failedCount || 0}</strong>
+                  <span className="text-[10px] text-amber-50 font-semibold mt-2 block">Incomplete / signature failures</span>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-6 rounded-2xl shadow text-white">
+                  <span className="block text-[10px] uppercase font-black tracking-wider text-purple-100">Overdue Recovery</span>
+                  <strong className="text-3xl font-black block mt-1">₹{paymentAnalytics.overdueRecovery || 0}</strong>
+                  <span className="text-[10px] text-purple-50 font-semibold mt-2 block">Balances recovered from past cycles</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Hostel-wise collections breakdown */}
+                <div className="bg-white p-6 rounded-2xl border shadow-sm lg:col-span-1 space-y-4">
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Hostel Collections Scope</h3>
+                  <div className="space-y-3">
+                    {paymentAnalytics.hostelCollections?.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">
+                        <div>
+                          <strong className="text-slate-800 block text-xs">{item.hostelName}</strong>
+                          <span className="text-[10px] text-gray-400 font-semibold">{item.activeResidents} active residents</span>
+                        </div>
+                        <div className="text-right">
+                          <strong className="text-green-600 block">₹{item.totalCollected}</strong>
+                          <span className="text-[10px] text-red-500 font-bold">₹{item.totalOutstanding} due</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Real-time verified transaction ledger */}
+                <div className="bg-white p-6 rounded-2xl border shadow-sm lg:col-span-2 space-y-4">
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Real-Time Transaction Ledger</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-150 text-[10px] font-sans font-medium text-gray-500">
+                      <thead>
+                        <tr className="bg-slate-50 font-black text-slate-500 uppercase text-left">
+                          <th className="px-4 py-2">Date & Time</th>
+                          <th className="px-4 py-2">Resident Student</th>
+                          <th className="px-4 py-2">Reference ID</th>
+                          <th className="px-4 py-2 text-right">Amount</th>
+                          <th className="px-4 py-2 text-center">Receipt</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 font-sans">
+                        {paymentAnalytics.recentPayments?.map(pay => (
+                          <tr key={pay._id} className="hover:bg-slate-50/50">
+                            <td className="px-4 py-2.5 whitespace-nowrap">{new Date(pay.paidAt).toLocaleString()}</td>
+                            <td className="px-4 py-2.5">
+                              <strong className="text-slate-800 block">{pay.studentId?.fullName}</strong>
+                              <span className="text-[9px] text-gray-400">ID: {pay.studentId?.admissionNumber}</span>
+                            </td>
+                            <td className="px-4 py-2.5 font-mono text-indigo-600">{pay.razorpayPaymentId || 'ADMIN CASH'}</td>
+                            <td className="px-4 py-2.5 text-right font-black text-green-600">₹{pay.amount}</td>
+                            <td className="px-4 py-2.5 text-center">
+                              <button
+                                onClick={() => openReceiptModal(pay._id)}
+                                className="px-2 py-0.5 bg-green-50 hover:bg-green-150 text-green-700 font-bold border border-green-200 rounded text-[9px]"
+                              >
+                                Download
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Transaction History Ledger */}
+      {activeTab === 'transactions' && (
+        <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6 animate-fadeIn">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+            <div>
+              <h3 className="text-lg font-black text-slate-800">💸 Complete ERP Financial Transaction History</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {user?.role === 'ADMIN' 
+                  ? "Global multi-hostel transaction history stream capturing all online gateway checkouts, partial settlements, and manual cash refunds."
+                  : "Hostel-isolated payment transaction registry capturing real-time resident settlements for your specific hostel."
+                }
+              </p>
+            </div>
+            <button 
+              onClick={fetchMasterLedgerAndAudits}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition shadow-sm"
+            >
+              🔄 Refresh Ledger Logs
+            </button>
+          </div>
+
+          {loadingTransactions ? (
+            <div className="text-center py-20 text-gray-400 italic">Compiling unalterable financial transaction ledgers...</div>
+          ) : transactions.length === 0 ? (
+            <div className="text-center py-20 text-gray-400 italic flex flex-col items-center justify-center">
+              <span className="text-4xl mb-2">💸</span>
+              <p className="text-sm font-bold">No Transaction Records Found</p>
+              <p className="text-xs text-gray-400 mt-1">There are no documented payments or settlements recorded in the ledger.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-150 text-xs font-sans font-medium text-gray-500">
+                <thead>
+                  <tr className="bg-slate-50 font-black text-slate-500 uppercase text-left">
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Student</th>
+                    <th className="px-4 py-3">Hostel</th>
+                    <th className="px-4 py-3">Invoice</th>
+                    <th className="px-4 py-3 text-right">Amount</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3">Razorpay ID</th>
+                    <th className="px-4 py-3 text-center">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 font-sans">
+                  {transactions.map(pay => {
+                    let statusBg = 'bg-slate-100 text-slate-700';
+                    let statusText = pay.status;
+
+                    if (pay.status === 'SUCCESS') {
+                      if (pay.amount < 0) {
+                        statusBg = 'bg-red-100 text-red-700 border border-red-200';
+                        statusText = 'REFUNDED';
+                      } else {
+                        statusBg = 'bg-green-100 text-green-700 border border-green-200';
+                        statusText = 'PAID';
+                      }
+                    } else if (pay.status === 'PENDING') {
+                      statusBg = 'bg-yellow-100 text-yellow-700 border border-yellow-200';
+                      statusText = 'PARTIAL';
+                    } else if (pay.status === 'FAILED') {
+                      statusBg = 'bg-red-100 text-red-700 border border-red-200';
+                      statusText = 'FAILED';
+                    }
+
+                    return (
+                      <tr key={pay._id} className="hover:bg-slate-50/30">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {pay.paidAt ? new Date(pay.paidAt).toLocaleString() : new Date(pay.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <strong className="text-slate-800 block font-bold">{pay.studentId?.fullName || 'N/A'}</strong>
+                          <span className="text-[10px] text-gray-400 block mt-0.5">ID: {pay.studentId?.admissionNumber || 'N/A'}</span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-700">
+                          {pay.hostelId?.name || 'Global Shared'}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-indigo-600">
+                          {pay.invoiceId?.month || 'Direct Payment'}
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-slate-800">
+                          <span className={pay.amount < 0 ? 'text-red-600' : 'text-slate-800'}>
+                            {pay.amount < 0 ? '-' : ''}₹{Math.abs(pay.amount)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center whitespace-nowrap">
+                          <span className={`px-2.5 py-0.5 rounded-full font-black text-[9px] uppercase tracking-wider ${statusBg}`}>
+                            {statusText}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-[10px] text-indigo-600">
+                          <div>{pay.razorpayPaymentId || 'ADMIN CASH'}</div>
+                          <span className="text-[8px] text-gray-400 block font-sans">Order: {pay.razorpayOrderId}</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {pay.status === 'SUCCESS' && pay.amount > 0 ? (
+                            <button
+                              onClick={() => openReceiptModal(pay._id)}
+                              className="px-2.5 py-1 bg-green-50 hover:bg-green-150 text-green-700 font-bold border border-green-200 rounded text-[9px] transition"
+                            >
+                              Download
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-[9px] italic font-semibold">N/A</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Adjustments Modal */}
       {editingInvoice && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -1295,6 +1568,75 @@ export default function WardenMessManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Receipt Modal Dialog */}
+      {receiptDetail && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border max-w-lg w-full p-6 space-y-6">
+            <div className="flex justify-between items-start border-b pb-4">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-green-600 tracking-wider bg-green-50 px-2 py-0.5 rounded">SUCCESSFUL TRANSACTION RECEIPT</span>
+                <h3 className="text-xl font-black text-gray-855 font-sans tracking-tight mt-1">Smart Hostel ERP Billing</h3>
+              </div>
+              <button 
+                onClick={() => setReceiptDetail(null)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold font-sans"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs font-medium text-gray-500 font-sans">
+              <div>
+                <span className="block text-[9px] uppercase font-bold text-gray-400">Resident Name</span>
+                <strong className="text-gray-800 text-sm">{receiptDetail.studentId?.fullName}</strong>
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase font-bold text-gray-400">Admission number</span>
+                <strong className="text-gray-800 text-sm">{receiptDetail.studentId?.admissionNumber}</strong>
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase font-bold text-gray-400">Hostel</span>
+                <strong className="text-gray-800">{receiptDetail.hostelId?.name || 'Main Hostel'}</strong>
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase font-bold text-gray-400">Payment Purpose</span>
+                <strong className="text-gray-800 capitalize">{receiptDetail.billType?.replace('_', ' ')} Dues</strong>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-150 text-xs font-semibold text-gray-600 space-y-2">
+              <div className="flex justify-between"><span>Base Charges (Mess + Rent + Maint)</span><span>₹{receiptDetail.amount}</span></div>
+              <div className="flex justify-between border-t pt-2 font-black text-gray-855 text-sm"><span>Total Transferred</span><span className="text-green-600">₹{receiptDetail.amount}</span></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-[10px] text-gray-400 font-mono">
+              <div>
+                <span className="block font-sans">Transaction Reference ID</span>
+                <strong>{receiptDetail.razorpayPaymentId || 'Simulated Dev Fallback'}</strong>
+              </div>
+              <div>
+                <span className="block font-sans">Payment Date & Time</span>
+                <strong>{new Date(receiptDetail.paidAt).toLocaleString()}</strong>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold shadow transition"
+              >
+                🖨️ Print Receipt
+              </button>
+              <button
+                onClick={() => setReceiptDetail(null)}
+                className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

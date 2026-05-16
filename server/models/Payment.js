@@ -60,6 +60,5 @@ const paymentSchema = new mongoose.Schema({
 
 // Indexes for fast receipt retrieval and payment audit logs
 paymentSchema.index({ studentId: 1, status: 1 });
-paymentSchema.index({ razorpayOrderId: 1 });
 
 module.exports = mongoose.model('Payment', paymentSchema);

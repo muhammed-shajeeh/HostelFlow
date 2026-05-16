@@ -8,24 +8,35 @@ export default function AdminDashboard() {
   const [attendanceStats, setAttendanceStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchStats = async () => {
+    try {
+      const [dashRes, leavesRes, attRes] = await Promise.all([
+        api.get('/admin/dashboard'),
+        api.get('/leaves/stats'),
+        api.get(`/attendance/summary?date=${new Date().toISOString().split('T')[0]}`)
+      ]);
+      setStats(dashRes.data.stats);
+      setLeaveStats(leavesRes.data.stats);
+      setAttendanceStats(attRes.data.summary);
+    } catch (error) {
+      toast.error('Failed to load dashboard stats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [dashRes, leavesRes, attRes] = await Promise.all([
-          api.get('/admin/dashboard'),
-          api.get('/leaves/stats'),
-          api.get(`/attendance/summary?date=${new Date().toISOString().split('T')[0]}`)
-        ]);
-        setStats(dashRes.data.stats);
-        setLeaveStats(leavesRes.data.stats);
-        setAttendanceStats(attRes.data.summary);
-      } catch (error) {
-        toast.error('Failed to load dashboard stats');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
+  }, []);
+
+  useEffect(() => {
+    const handleRefresh = (e) => {
+      console.log('[Admin Dashboard] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchStats();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    return () => window.removeEventListener('erp:refresh', handleRefresh);
   }, []);
 
   if (loading) {

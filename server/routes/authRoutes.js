@@ -1,6 +1,6 @@
 const express = require('express');
 const { check } = require('express-validator');
-const { register, verifyEmail, login, getMe, updateProfile } = require('../controllers/authController');
+const { register, verifyEmail, login, getMe, updateProfile, securityLogin } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -36,6 +36,9 @@ router.post(
   ],
   login
 );
+
+// @route   POST /api/auth/security-login
+router.post('/security-login', securityLogin);
 
 // @route   GET /api/auth/me
 router.get('/me', authMiddleware, getMe);

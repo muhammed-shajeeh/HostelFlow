@@ -28,7 +28,8 @@ export default function Login() {
           ADMIN: '/admin',
           WARDEN: '/warden',
           STUDENT: '/student',
-          PARENT: '/parent'
+          PARENT: '/parent',
+          SECURITY: '/security'
         };
         navigate(roleRoutes[res.data.user.role] || '/');
       }

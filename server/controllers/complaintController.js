@@ -1,5 +1,6 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
+const { createAndEmitNotification, emitToRoom } = require('../utils/socket');
 
 // ======================================================
 // COMPLAINT CONTROLLER
@@ -38,6 +39,20 @@ const createComplaint = async (req, res, next) => {
       category,
       priority: priority || 'MEDIUM'
     });
+
+    // Notify wardens about the new complaint
+    const wardens = await User.find({ role: 'WARDEN', hostelId: req.user.hostelId }).select('_id').lean();
+    for (const warden of wardens) {
+      await createAndEmitNotification({
+        recipientId: warden._id,
+        title: 'New Student Complaint',
+        message: `${req.user.fullName} submitted a new complaint: "${title}"`,
+        type: 'NEW_COMPLAINT',
+        actionUrl: '/complaints',
+        hostelId: req.user.hostelId
+      });
+    }
+    emitToRoom(`HOSTEL_${req.user.hostelId}`, 'REFRESH_DASHBOARD', { type: 'NEW_COMPLAINT' });
 
     res.status(201).json({
       success: true,
@@ -190,6 +205,18 @@ const updateComplaintStatus = async (req, res, next) => {
 
     await complaint.save();
 
+    // Notify the student that their complaint status has changed
+    await createAndEmitNotification({
+      recipientId: complaint.studentId,
+      title: 'Complaint Status Updated',
+      message: `Your complaint "${complaint.title}" is now marked as ${status}.`,
+      type: 'COMPLAINT_RESOLVED',
+      actionUrl: '/student/complaints',
+      hostelId: complaint.hostelId
+    });
+    emitToRoom(`STUDENT_${complaint.studentId}`, 'REFRESH_DASHBOARD', { type: 'COMPLAINT_STATUS_UPDATED' });
+    emitToRoom(`HOSTEL_${complaint.hostelId}`, 'REFRESH_DASHBOARD', { type: 'COMPLAINT_STATUS_UPDATED' });
+
     res.status(200).json({
       success: true,
       message: `Complaint status updated to ${status}.`,
@@ -227,6 +254,17 @@ const assignComplaint = async (req, res, next) => {
     if (complaint.status === 'OPEN') complaint.status = 'IN_PROGRESS';
 
     await complaint.save();
+
+    // Notify the assigned staff/warden
+    await createAndEmitNotification({
+      recipientId: assignedTo,
+      title: 'Complaint Assigned To You',
+      message: `You have been assigned to investigate complaint: "${complaint.title}"`,
+      type: 'NEW_COMPLAINT',
+      actionUrl: '/complaints',
+      hostelId: complaint.hostelId
+    });
+    emitToRoom(`HOSTEL_${complaint.hostelId}`, 'REFRESH_DASHBOARD', { type: 'COMPLAINT_ASSIGNED' });
 
     res.status(200).json({
       success: true,

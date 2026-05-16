@@ -15,7 +15,8 @@ export default function RoleProtectedRoute({ allowedRoles }) {
       ADMIN: '/admin',
       WARDEN: '/warden',
       STUDENT: '/student',
-      PARENT: '/parent'
+      PARENT: '/parent',
+      SECURITY: '/security'
     };
     return <Navigate to={roleRoutes[user.role] || '/'} replace />;
   }

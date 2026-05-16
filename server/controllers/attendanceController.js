@@ -2,6 +2,7 @@ const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const Leave = require('../models/Leave');
 const Room = require('../models/Room');
+const { createAndEmitNotification, emitToRoom } = require('../utils/socket');
 
 // Helper function to normalize date to midnight UTC for consistent querying
 const normalizeDate = (dateString) => {
@@ -78,6 +79,51 @@ const markRoomAttendance = async (req, res, next) => {
 
     if (operations.length > 0) {
       await Attendance.bulkWrite(operations);
+
+      // Trigger Real-Time Notification Alerts & Dashboard Resets
+      for (const record of attendanceRecords) {
+        let finalStatus = record.status;
+        const activeLeave = await Leave.findOne({
+          studentId: record.studentId,
+          status: { $in: ['APPROVED', 'EXITED'] },
+          departureDate: { $lte: new Date(normalizedDate.getTime() + 86400000) }
+        }).sort('-departureDate').lean();
+
+        if (activeLeave) {
+          finalStatus = new Date(activeLeave.expectedReturnDate) < currentDate ? 'LATE_RETURN' : 'ON_LEAVE';
+        }
+
+        // Notify student
+        await createAndEmitNotification({
+          recipientId: record.studentId,
+          title: 'Daily Attendance Marked',
+          message: `Your attendance status for ${normalizedDate.toDateString()} is marked as ${finalStatus.replace('_', ' ')}.`,
+          type: 'ATTENDANCE_ALERT',
+          actionUrl: '/student/attendance',
+          hostelId: room.hostelId
+        });
+
+        // Notify parents
+        const parents = await User.find({ role: 'PARENT', students: record.studentId }).select('_id').lean();
+        for (const parent of parents) {
+          await createAndEmitNotification({
+            recipientId: parent._id,
+            title: finalStatus === 'LATE_RETURN' ? '🚨 Child Late Return Alert' : 'Daily Attendance Update',
+            message: finalStatus === 'LATE_RETURN' 
+              ? `URGENT: Your child has failed to check in before curfew cutoff on ${normalizedDate.toDateString()}.`
+              : `${record.studentId} child attendance marked as ${finalStatus.replace('_', ' ')}.`,
+            type: finalStatus === 'LATE_RETURN' ? 'LATE_RETURN_ALERT' : 'ATTENDANCE_ALERT',
+            actionUrl: '/parent/dashboard',
+            hostelId: room.hostelId
+          });
+          emitToRoom(`PARENT_${parent._id}`, 'REFRESH_DASHBOARD', { type: 'ATTENDANCE_MARKED' });
+        }
+
+        emitToRoom(`STUDENT_${record.studentId}`, 'REFRESH_DASHBOARD', { type: 'ATTENDANCE_MARKED' });
+      }
+
+      emitToRoom(`HOSTEL_${room.hostelId}`, 'REFRESH_DASHBOARD', { type: 'ATTENDANCE_MARKED' });
+      emitToRoom('ADMIN_GLOBAL', 'REFRESH_DASHBOARD', { type: 'ATTENDANCE_MARKED' });
     }
 
     res.status(200).json({ success: true, message: 'Attendance marked successfully' });

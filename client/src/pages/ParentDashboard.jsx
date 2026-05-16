@@ -10,25 +10,35 @@ export default function ParentDashboard() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const fetchStudents = async () => {
+    try {
+      const res = await api.get('/parent/students');
+      setStudents(res.data.students);
+    } catch (error) {
+      toast.error('Failed to load linked students');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Phase 9: Redirect if password change is forced
     if (user?.mustChangePassword) {
       navigate('/parent/change-password');
       return;
     }
-
-    const fetchStudents = async () => {
-      try {
-        const res = await api.get('/parent/students');
-        setStudents(res.data.students);
-      } catch (error) {
-        toast.error('Failed to load linked students');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStudents();
   }, [user, navigate]);
+
+  useEffect(() => {
+    const handleRefresh = (e) => {
+      console.log('[Parent Dashboard] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchStudents();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    return () => window.removeEventListener('erp:refresh', handleRefresh);
+  }, []);
 
   if (loading) return <div className="p-10 text-center">Loading Guardian Dashboard...</div>;
 
@@ -87,17 +97,6 @@ export default function ParentDashboard() {
           ))}
         </div>
       )}
-
-      {/* Emergency Leave Notice */}
-      <div className="mt-10 bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm">
-        <div className="flex gap-4">
-          <div className="text-red-500 text-3xl">🚨</div>
-          <div>
-            <h4 className="text-lg font-bold text-red-800">Emergency Protocol</h4>
-            <p className="text-red-700">Any emergency leave requests submitted by your children will appear here for your immediate approval. Your approval is mandatory before the Warden can finalize the exit pass.</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

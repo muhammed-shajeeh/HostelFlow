@@ -24,10 +24,10 @@ export default function StudentBilling() {
   const [receiptDetail, setReceiptDetail] = useState(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
 
-  // Simulated Payment Modal State
-  const [showSimulatedModal, setShowSimulatedModal] = useState(false);
-  const [simulatedPaymentData, setSimulatedPaymentData] = useState(null);
-  const [simulatingSuccess, setSimulatingSuccess] = useState(false);
+  // Real Partial Payment Modal State
+  const [partialPayInvoice, setPartialPayInvoice] = useState(null);
+  const [partialPayAmount, setPartialPayAmount] = useState('');
+  const [initiatingPay, setInitiatingPay] = useState(false);
 
   // Invoice Timeline Modal State
   const [timelineInvoice, setTimelineInvoice] = useState(null);
@@ -65,36 +65,90 @@ export default function StudentBilling() {
     }
   };
 
-  const handlePayInvoice = async (invoice) => {
-    setPayingInvoice(invoice._id);
-    try {
-      const res = await api.post('/mess/pay-invoice', { invoiceId: invoice._id });
-      const { key, amount, orderId, studentName, studentEmail } = res.data;
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
-      if (key === 'mock_key_id') {
-        // Fallback: Sandbox payment simulator
-        setSimulatedPaymentData({ orderId, amount: amount / 100, invoiceId: invoice._id, invoice });
-        setShowSimulatedModal(true);
+  const triggerPaymentCheckout = async (invoice, amount) => {
+    const payVal = Number(amount);
+    if (isNaN(payVal) || payVal <= 0) {
+      toast.error('Please enter a valid positive payment amount.');
+      return;
+    }
+    const outstanding = invoice.totalAmount - invoice.amountPaid;
+    if (payVal > outstanding) {
+      toast.error(`Amount exceeds remaining balance. Max allowed is ₹${outstanding}`);
+      return;
+    }
+
+    setInitiatingPay(true);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        toast.error('Failed to load Razorpay Gateway SDK. Check your internet connection.');
+        return;
+      }
+
+      const res = await api.post('/payments/create-order', {
+        invoiceId: invoice._id,
+        amount: payVal
+      });
+
+      const { keyId, orderId, studentName, studentEmail } = res.data;
+
+      if (keyId === 'mock_key_id') {
+        // Safe interactive fallback inside production flow for sandbox environments
+        toast.loading('Razorpay key absent. Processing with Sandbox Secure verification...', { id: 'sandbox_pay' });
+        setTimeout(async () => {
+          try {
+            const mockPayId = `pay_mock_${Math.random().toString(36).substring(2, 10)}`;
+            const mockSig = `sig_mock_${Math.random().toString(36).substring(2, 10)}`;
+
+            const verifyRes = await api.post('/payments/verify', {
+              razorpay_order_id: orderId,
+              razorpay_payment_id: mockPayId,
+              razorpay_signature: mockSig
+            });
+
+            toast.success(verifyRes.data.message, { id: 'sandbox_pay' });
+            setPartialPayInvoice(null);
+            fetchBillingInfo();
+          } catch (err) {
+            toast.error(err.response?.data?.message || 'Sandbox verification failed.', { id: 'sandbox_pay' });
+          }
+        }, 1500);
       } else {
-        // Load and launch real Razorpay checkout
         const options = {
-          key,
-          amount,
+          key: keyId,
+          amount: payVal * 100, // in paise
           currency: 'INR',
           name: 'Smart Hostel ERP',
           description: `Combined Monthly Invoice - ${invoice.month}`,
           order_id: orderId,
           handler: async function (response) {
+            toast.loading('Securing transaction with server-side signature audits...', { id: 'auditing_pay' });
             try {
-              const verifyRes = await api.post('/mess/verify-invoice', {
+              const verifyRes = await api.post('/payments/verify', {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature
               });
-              toast.success(verifyRes.data.message);
+              toast.success(verifyRes.data.message, { id: 'auditing_pay' });
+              setPartialPayInvoice(null);
               fetchBillingInfo();
             } catch (err) {
-              toast.error('Verification failed: payment might be delayed.');
+              toast.error(err.response?.data?.message || 'Payment verification failed.', { id: 'auditing_pay' });
             }
           },
           prefill: {
@@ -109,38 +163,15 @@ export default function StudentBilling() {
         rzp.open();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Payment initiation failed.');
+      toast.error(error.response?.data?.message || 'Failed to initialize online payment checkout.');
     } finally {
-      setPayingInvoice(null);
+      setInitiatingPay(false);
     }
   };
 
-  const submitSimulatedPayment = async (success = true) => {
-    setSimulatingSuccess(true);
-    try {
-      if (!success) {
-        toast.error('Simulated transaction failed.');
-        setShowSimulatedModal(false);
-        return;
-      }
-
-      const mockPaymentId = `pay_mock_${Math.random().toString(36).substring(2, 10)}`;
-      const mockSignature = `sig_mock_${Math.random().toString(36).substring(2, 10)}`;
-
-      const res = await api.post('/mess/verify-invoice', {
-        razorpay_order_id: simulatedPaymentData.orderId,
-        razorpay_payment_id: mockPaymentId,
-        razorpay_signature: mockSignature
-      });
-
-      toast.success(res.data.message);
-      setShowSimulatedModal(false);
-      fetchBillingInfo();
-    } catch (error) {
-      toast.error('Simulated verification failed');
-    } finally {
-      setSimulatingSuccess(false);
-    }
+  const handlePayInvoice = (invoice) => {
+    setPartialPayInvoice(invoice);
+    setPartialPayAmount((invoice.totalAmount - invoice.amountPaid).toFixed(2));
   };
 
   const openReceiptModal = async (paymentId) => {
@@ -525,36 +556,101 @@ export default function StudentBilling() {
         </div>
       )}
 
-      {/* Simulated Sandbox Payment Modal */}
-      {showSimulatedModal && simulatedPaymentData && (
+      {/* Partial / Full Payment Custom Modal */}
+      {partialPayInvoice && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[110] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-indigo-100 animate-fadeIn">
-            <div className="text-center mb-6">
-              <div className="inline-block bg-indigo-100 p-3 rounded-full text-indigo-600 text-3xl mb-2">🛡️</div>
-              <h4 className="text-xl font-bold text-gray-850">Simulated Payment Sandbox</h4>
-              <p className="text-xs text-gray-500 mt-1">Development Sandbox Mode. Verify immutable draft snapshot calculations.</p>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-150 mb-6 text-xs space-y-1.5 text-gray-600">
-              <div className="flex justify-between"><span className="text-gray-400">Billing Cycle:</span><strong>{simulatedPaymentData.invoice?.month}</strong></div>
-              <div className="flex justify-between"><span className="text-gray-400">Order Reference:</span><strong className="font-mono">{simulatedPaymentData.orderId.slice(-10)}</strong></div>
-              <div className="flex justify-between border-t mt-2 pt-2"><span className="font-bold text-gray-750">Total Outstanding Transferred:</span><strong className="text-indigo-600 font-extrabold text-base">₹{simulatedPaymentData.amount}</strong></div>
-            </div>
-
-            <div className="flex gap-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-indigo-50 animate-fadeIn space-y-5">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] uppercase font-black text-indigo-600 tracking-wider bg-indigo-50 px-2 py-0.5 rounded">INITIATE TRANSACTION</span>
+                <h4 className="text-xl font-black text-gray-850 mt-1">Hostel & Mess Payments</h4>
+              </div>
               <button
-                disabled={simulatingSuccess}
-                onClick={() => submitSimulatedPayment(false)}
-                className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-2.5 rounded-xl font-bold transition text-xs border border-red-200"
+                onClick={() => setPartialPayInvoice(null)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
               >
-                Cancel transaction
+                &times;
+              </button>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-xl border space-y-1.5 text-xs text-slate-600">
+              <div className="flex justify-between"><span>Combined Bill Month:</span><strong className="text-slate-800">{new Date(partialPayInvoice.month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}</strong></div>
+              <div className="flex justify-between"><span>Total Invoiced Amount:</span><strong className="text-slate-800">₹{partialPayInvoice.totalAmount}</strong></div>
+              <div className="flex justify-between"><span>Paid to Date:</span><strong className="text-green-600 font-bold">₹{partialPayInvoice.amountPaid}</strong></div>
+              <div className="flex justify-between border-t pt-2 mt-2 text-sm font-black text-slate-800">
+                <span>Remaining Outstanding:</span>
+                <span className="text-red-600">₹{(partialPayInvoice.totalAmount - partialPayInvoice.amountPaid).toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">Select Amount Option</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPartialPayAmount((partialPayInvoice.totalAmount - partialPayInvoice.amountPaid).toFixed(2))}
+                  className={`py-2 rounded-xl text-xs font-bold transition border ${
+                    Math.abs(Number(partialPayAmount) - (partialPayInvoice.totalAmount - partialPayInvoice.amountPaid)) < 0.01
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 text-slate-600 border-gray-200'
+                  }`}
+                >
+                  Pay Full Balance
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPartialPayAmount('')}
+                  className={`py-2 rounded-xl text-xs font-bold transition border ${
+                    Math.abs(Number(partialPayAmount) - (partialPayInvoice.totalAmount - partialPayInvoice.amountPaid)) >= 0.01
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : 'bg-white hover:bg-slate-50 text-slate-600 border-gray-200'
+                  }`}
+                >
+                  Custom Amount
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-700">Enter Custom Amount (₹)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-slate-400 font-black text-sm">₹</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={(partialPayInvoice.totalAmount - partialPayInvoice.amountPaid).toFixed(2)}
+                  value={partialPayAmount}
+                  onChange={(e) => setPartialPayAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="pl-7 pr-3 py-2 w-full bg-white border border-gray-200 rounded-xl font-bold text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <span className="text-[10px] text-gray-400 font-semibold block">Custom partial payments will automatically update invoice status to PARTIAL.</span>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                disabled={initiatingPay}
+                onClick={() => setPartialPayInvoice(null)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+              >
+                Cancel
               </button>
               <button
-                disabled={simulatingSuccess}
-                onClick={() => submitSimulatedPayment(true)}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-750 text-white py-2.5 rounded-xl font-bold transition text-xs shadow"
+                type="button"
+                disabled={initiatingPay}
+                onClick={() => triggerPaymentCheckout(partialPayInvoice, partialPayAmount)}
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition flex justify-center items-center gap-1.5"
               >
-                {simulatingSuccess ? 'Authorizing secure transaction...' : 'Simulate secure success'}
+                {initiatingPay ? (
+                  <>
+                    <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                    Launching...
+                  </>
+                ) : (
+                  'Secure Checkout'
+                )}
               </button>
             </div>
           </div>

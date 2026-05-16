@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['ADMIN', 'WARDEN', 'STUDENT', 'PARENT'],
+    enum: ['ADMIN', 'WARDEN', 'STUDENT', 'PARENT', 'SECURITY'],
     default: 'STUDENT'
   },
   hostelId: {
@@ -106,6 +106,34 @@ const userSchema = new mongoose.Schema({
   mustChangePassword: {
     type: Boolean,
     default: false
+  },
+  lastLogin: {
+    type: Date
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  securityPinHash: {
+    type: String
+  },
+  securityEnabled: {
+    type: Boolean,
+    default: true
+  },
+  lastSecurityLogin: {
+    type: Date
+  },
+  securityLoginCount: {
+    type: Number,
+    default: 0
+  },
+  failedLoginAttempts: {
+    type: Number,
+    default: 0
+  },
+  loginLockUntil: {
+    type: Date
   }
 }, {
   timestamps: true
@@ -128,6 +156,12 @@ this.password = await bcrypt.hash(this.password, salt);
 // Method to compare password
 userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Method to compare security PIN
+userSchema.methods.comparePin = async function(enteredPin) {
+  if (!this.securityPinHash) return false;
+  return await bcrypt.compare(enteredPin, this.securityPinHash);
 };
 
 // ==========================================
