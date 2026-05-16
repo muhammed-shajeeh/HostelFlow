@@ -44,6 +44,21 @@ export default function SidebarLayout() {
                 </Link>
               </>
             )}
+
+            {(user?.role === 'ADMIN' || user?.role === 'WARDEN') && (
+              <>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Operations</div>
+                <Link to="/rooms" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Manage Rooms
+                </Link>
+                <Link to="/students/pending" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Pending Approvals
+                </Link>
+                <Link to="/students/list" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Student List
+                </Link>
+              </>
+            )}
           </nav>
         </div>
 

@@ -73,7 +73,33 @@ const userSchema = new mongoose.Schema({
   linkedStudents: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  roomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Room'
+  },
+  bedNumber: {
+    type: Number
+  },
+  studentPreferences: {
+    sameDepartmentPreferred: { type: Boolean, default: false },
+    sameBatchPreferred: { type: Boolean, default: false },
+    preferredFloor: { type: Number },
+    medicalNeeds: { type: String },
+    specialNotes: { type: String }
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['PENDING', 'APPROVED', 'REJECTED'],
+    default: 'PENDING'
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  approvedAt: {
+    type: Date
+  }
 }, {
   timestamps: true
 });

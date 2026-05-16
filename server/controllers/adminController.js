@@ -96,7 +96,15 @@ const getAdminDashboard = async (req, res, next) => {
     const totalHostels = await Hostel.countDocuments();
     const activeHostels = await Hostel.countDocuments({ isActive: true });
     const totalWardens = await User.countDocuments({ role: 'WARDEN' });
-    const totalStudents = await User.countDocuments({ role: 'STUDENT' });
+    const totalStudents = await User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED' });
+    const pendingStudents = await User.countDocuments({ role: 'STUDENT', approvalStatus: 'PENDING' });
+    
+    // Aggregating room stats
+    const Room = require('../models/Room');
+    const rooms = await Room.find();
+    let totalRooms = rooms.length;
+    let occupiedRooms = rooms.filter(r => r.occupiedBeds > 0).length;
+    let availableBeds = rooms.reduce((acc, curr) => acc + (curr.availableBeds || 0), 0);
 
     res.status(200).json({
       success: true,
@@ -104,7 +112,11 @@ const getAdminDashboard = async (req, res, next) => {
         totalHostels,
         activeHostels,
         totalWardens,
-        totalStudents
+        totalStudents,
+        pendingStudents,
+        totalRooms,
+        occupiedRooms,
+        availableBeds
       }
     });
   } catch (error) { next(error); }
