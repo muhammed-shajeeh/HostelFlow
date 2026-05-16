@@ -38,6 +38,16 @@ import StudentAttendance from './pages/StudentAttendance';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
 
+// Complaints
+import ComplaintCreate from './pages/ComplaintCreate';
+import MyComplaints from './pages/MyComplaints';
+import ComplaintManagement from './pages/ComplaintManagement';
+
+// Notices
+import Notices from './pages/Notices';
+import NoticeCreate from './pages/NoticeCreate';
+import NoticeManagement from './pages/NoticeManagement';
+
 function App() {
   return (
     <AuthProvider>
@@ -80,6 +90,13 @@ function App() {
                 {/* Attendance (Warden/Admin) */}
                 <Route path="/attendance/mark" element={<AttendanceMark />} />
                 <Route path="/attendance/summary" element={<AttendanceSummary />} />
+
+                {/* Complaints (Warden/Admin) */}
+                <Route path="/complaints" element={<ComplaintManagement />} />
+
+                {/* Notices (Warden/Admin) */}
+                <Route path="/notices/manage" element={<NoticeManagement />} />
+                <Route path="/notices/create" element={<NoticeCreate />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
@@ -91,6 +108,13 @@ function App() {
                 
                 {/* Attendance (Student) */}
                 <Route path="/student/attendance" element={<StudentAttendance />} />
+
+                {/* Complaints (Student) */}
+                <Route path="/student/complaints" element={<MyComplaints />} />
+                <Route path="/student/complaints/new" element={<ComplaintCreate />} />
+
+                {/* Notices (Student) */}
+                <Route path="/notices" element={<Notices />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>

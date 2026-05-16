@@ -72,6 +72,19 @@ export default function SidebarLayout() {
                 <Link to="/leaves/history" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
                   Leave History
                 </Link>
+
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Complaints</div>
+                <Link to="/complaints" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-orange-400">
+                  Manage Complaints
+                </Link>
+
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Noticeboard</div>
+                <Link to="/notices/manage" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-indigo-400">
+                  Manage Notices
+                </Link>
+                <Link to="/notices/create" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Post Notice
+                </Link>
               </>
             )}
 
@@ -88,6 +101,19 @@ export default function SidebarLayout() {
                 </Link>
                 <Link to="/student/leaves/history" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-purple-500">
                   My Leave History
+                </Link>
+
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Complaints</div>
+                <Link to="/student/complaints" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-orange-400">
+                  My Complaints
+                </Link>
+                <Link to="/student/complaints/new" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Submit Complaint
+                </Link>
+
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Noticeboard</div>
+                <Link to="/notices" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-indigo-400">
+                  View Notices
                 </Link>
               </>
             )}

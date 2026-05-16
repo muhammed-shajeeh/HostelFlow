@@ -6,17 +6,23 @@ import { Link } from 'react-router-dom';
 export default function WardenDashboard() {
   const [stats, setStats] = useState(null);
   const [attendanceStats, setAttendanceStats] = useState(null);
+  const [complaintStats, setComplaintStats] = useState(null);
+  const [noticeStats, setNoticeStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [statsRes, attRes] = await Promise.all([
+        const [statsRes, attRes, complaintRes, noticeRes] = await Promise.all([
           api.get('/leaves/stats'),
-          api.get(`/attendance/summary?date=${new Date().toISOString().split('T')[0]}`)
+          api.get(`/attendance/summary?date=${new Date().toISOString().split('T')[0]}`),
+          api.get('/complaints/stats'),
+          api.get('/notices/stats')
         ]);
         setStats(statsRes.data.stats);
         setAttendanceStats(attRes.data.summary);
+        setComplaintStats(complaintRes.data.stats);
+        setNoticeStats(noticeRes.data.stats);
       } catch (error) {
         toast.error('Failed to load dashboard stats');
       } finally {
@@ -70,6 +76,28 @@ export default function WardenDashboard() {
         </div>
       </div>
 
+      {/* Complaint Summary */}
+      <h3 className="text-xl font-bold mb-4 mt-8">Complaint Overview</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white p-4 rounded shadow border-t-4 border-yellow-500">
+          <div className="text-xs text-gray-500 font-bold uppercase mb-1">Open</div>
+          <div className="text-2xl font-black text-yellow-700">{complaintStats?.openComplaints || 0}</div>
+          <Link to="/complaints" className="text-xs text-yellow-600 font-bold hover:underline">View →</Link>
+        </div>
+        <div className="bg-white p-4 rounded shadow border-t-4 border-blue-500">
+          <div className="text-xs text-gray-500 font-bold uppercase mb-1">In Progress</div>
+          <div className="text-2xl font-black text-blue-700">{complaintStats?.inProgress || 0}</div>
+        </div>
+        <div className="bg-white p-4 rounded shadow border-t-4 border-red-500">
+          <div className="text-xs text-gray-500 font-bold uppercase mb-1">🚨 Urgent</div>
+          <div className="text-2xl font-black text-red-700">{complaintStats?.urgentOpen || 0}</div>
+        </div>
+        <div className="bg-white p-4 rounded shadow border-t-4 border-green-500">
+          <div className="text-xs text-gray-500 font-bold uppercase mb-1">Resolved</div>
+          <div className="text-2xl font-black text-green-700">{complaintStats?.resolved || 0}</div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded shadow">
           <h3 className="text-lg font-bold mb-4">Security QR Scanner</h3>
@@ -83,6 +111,27 @@ export default function WardenDashboard() {
           <div className="flex gap-3">
             <Link to="/students/pending" className="bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 transition text-sm">Pending Students</Link>
             <Link to="/students/list" className="bg-blue-100 text-blue-700 px-4 py-2 rounded font-bold hover:bg-blue-200 transition text-sm">Student Directory</Link>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded shadow">
+          <h3 className="text-lg font-bold mb-3">Hostel Announcements</h3>
+          {noticeStats?.latest?.length > 0 ? (
+            <div className="space-y-2 mb-4">
+              {noticeStats.latest.map(n => (
+                <div key={n._id} className="flex items-center gap-2 text-sm">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${n.priority === 'EMERGENCY' ? 'bg-red-500' : n.priority === 'IMPORTANT' ? 'bg-orange-400' : 'bg-gray-300'}`}></span>
+                  <span className="text-gray-700 truncate">{n.title}</span>
+                  {n.isPinned && <span className="text-blue-500 text-xs">📌</span>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 mb-4">No active notices for this hostel.</p>
+          )}
+          <div className="flex gap-2">
+            <Link to="/notices/manage" className="bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded font-bold hover:bg-indigo-200 transition text-sm">View All</Link>
+            <Link to="/notices/create" className="bg-indigo-600 text-white px-3 py-1.5 rounded font-bold hover:bg-indigo-700 transition text-sm">+ Post Notice</Link>
           </div>
         </div>
       </div>

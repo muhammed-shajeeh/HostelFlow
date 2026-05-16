@@ -8,19 +8,25 @@ export default function StudentDashboard() {
   const { user } = useContext(AuthContext);
   const [stats, setStats] = useState(null);
   const [attendancePct, setAttendancePct] = useState(null);
+  const [complaintStats, setComplaintStats] = useState(null);
+  const [noticeStats, setNoticeStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [statsRes, attRes] = await Promise.all([
+        const [statsRes, attRes, complaintRes, noticeRes] = await Promise.all([
           api.get('/leaves/stats'),
-          api.get('/attendance/student/history')
+          api.get('/attendance/student/history'),
+          api.get('/complaints/stats'),
+          api.get('/notices/stats')
         ]);
         setStats(statsRes.data.stats);
         setAttendancePct(attRes.data.percentage);
+        setComplaintStats(complaintRes.data.stats);
+        setNoticeStats(noticeRes.data.stats);
       } catch (error) {
-        // Stats might not load if the student isn't approved yet, that's fine
+        // Stats may not load if student isn't fully approved yet — silent fail
       } finally {
         setLoading(false);
       }
@@ -35,7 +41,20 @@ export default function StudentDashboard() {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Welcome, {user?.fullName}</h2>
-      
+
+      {/* Emergency Notice Banner */}
+      {noticeStats?.emergency > 0 && (
+        <div className="bg-red-600 text-white p-4 rounded-lg mb-6 flex justify-between items-center shadow-lg">
+          <div>
+            <div className="font-bold text-lg">🚨 {noticeStats.emergency} Emergency Notice{noticeStats.emergency > 1 ? 's' : ''}</div>
+            <div className="text-red-100 text-sm">Urgent announcements require your attention.</div>
+          </div>
+          <Link to="/notices" className="bg-white text-red-700 px-4 py-2 rounded font-bold hover:bg-red-50 transition text-sm">
+            View Now
+          </Link>
+        </div>
+      )}
+
       {user?.approvalStatus !== 'APPROVED' ? (
         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded shadow">
           <h3 className="text-lg font-bold text-yellow-800">Application Pending</h3>
@@ -105,6 +124,33 @@ export default function StudentDashboard() {
                 <div className={`text-5xl font-black ${attendancePct >= 75 ? 'text-green-600' : 'text-red-600'}`}>{attendancePct !== null ? attendancePct : 0}%</div>
               </div>
               <Link to="/student/attendance" className="mt-4 inline-block text-sm text-green-700 font-bold hover:underline">View Daily Logs &rarr;</Link>
+            </div>
+
+            {/* Active Complaints Widget */}
+            <div className="bg-white p-6 rounded shadow border-t-4 border-orange-400">
+              <h3 className="text-gray-500 text-sm font-bold uppercase mb-2">Active Complaints</h3>
+              <div className="text-4xl font-black text-orange-700">
+                {(complaintStats?.openComplaints || 0) + (complaintStats?.inProgress || 0)}
+              </div>
+              <Link to="/student/complaints" className="mt-4 inline-block text-sm text-orange-600 font-bold hover:underline">View My Complaints &rarr;</Link>
+            </div>
+
+            {/* Latest Notices Widget */}
+            <div className="bg-white p-6 rounded shadow border-t-4 border-indigo-400">
+              <h3 className="text-gray-500 text-sm font-bold uppercase mb-3">Latest Notices</h3>
+              {noticeStats?.latest?.length > 0 ? (
+                <div className="space-y-2">
+                  {noticeStats.latest.map(n => (
+                    <div key={n._id} className="flex items-start gap-2 text-sm">
+                      <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${n.priority === 'EMERGENCY' ? 'bg-red-500' : n.priority === 'IMPORTANT' ? 'bg-orange-400' : 'bg-gray-300'}`}></span>
+                      <span className="text-gray-700 line-clamp-1">{n.title}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">No recent notices.</p>
+              )}
+              <Link to="/notices" className="mt-4 inline-block text-sm text-indigo-600 font-bold hover:underline">View All Notices &rarr;</Link>
             </div>
           </div>
         </div>
