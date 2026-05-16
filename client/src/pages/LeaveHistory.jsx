@@ -1,0 +1,92 @@
+import { useState, useEffect } from 'react';
+import api from '../api';
+import toast from 'react-hot-toast';
+
+export default function LeaveHistory() {
+  const [leaves, setLeaves] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await api.get('/leaves/history');
+      setLeaves(res.data.leaves);
+    } catch (error) {
+      toast.error('Failed to fetch leave history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case 'APPROVED': return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">APPROVED</span>;
+      case 'EXITED': return <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-bold animate-pulse">OUTSIDE</span>;
+      case 'RETURNED': return <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold">RETURNED</span>;
+      case 'REJECTED': return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold">REJECTED</span>;
+      default: return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-bold">{status}</span>;
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6">Leave & Outpass History</h2>
+
+      {loading ? (
+        <div className="text-center p-10">Loading records...</div>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded shadow border">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Tracking</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {leaves.map(leave => (
+                <tr key={leave._id} className={leave.isEmergency ? 'bg-red-50/30' : ''}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="font-bold text-gray-900">{leave.studentId?.fullName}</div>
+                    <div className="text-xs text-gray-500">Room {leave.roomId?.roomNumber}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium">{leave.leaveType}</div>
+                    {leave.isEmergency && <span className="text-[10px] bg-red-600 text-white px-1 rounded font-bold uppercase">Emergency</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div><span className="font-bold text-xs">Out:</span> {new Date(leave.departureDate).toLocaleDateString()}</div>
+                    <div><span className="font-bold text-xs">In:</span> {new Date(leave.expectedReturnDate).toLocaleDateString()}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-xs">
+                    {leave.exitedAt ? (
+                      <div className="text-purple-700 font-bold mb-1">Left: {new Date(leave.exitedAt).toLocaleDateString()} {new Date(leave.exitedAt).toLocaleTimeString()}</div>
+                    ) : <div className="text-gray-400 italic">Not exited</div>}
+                    
+                    {leave.returnedAt ? (
+                      <div className="text-green-700 font-bold">Returned: {new Date(leave.returnedAt).toLocaleDateString()} {new Date(leave.returnedAt).toLocaleTimeString()}</div>
+                    ) : <div className="text-gray-400 italic">Not returned</div>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(leave.status)}
+                  </td>
+                </tr>
+              ))}
+              {leaves.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="px-6 py-10 text-center text-gray-500">No leave history found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

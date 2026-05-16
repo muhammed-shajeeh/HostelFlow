@@ -57,6 +57,28 @@ export default function SidebarLayout() {
                 <Link to="/students/list" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
                   Student List
                 </Link>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">Leave Management</div>
+                <Link to="/leaves/pending" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-yellow-500">
+                  Leave Approvals
+                </Link>
+                <Link to="/leaves/scanner" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-green-500">
+                  QR Scanner
+                </Link>
+                <Link to="/leaves/history" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition">
+                  Leave History
+                </Link>
+              </>
+            )}
+
+            {user?.role === 'STUDENT' && (
+              <>
+                <div className="text-xs text-gray-500 uppercase font-bold mt-4 mb-1 pl-2">My Leaves</div>
+                <Link to="/student/leaves/request" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-blue-500">
+                  Apply for Leave
+                </Link>
+                <Link to="/student/leaves/history" className="bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded transition border-l-4 border-purple-500">
+                  My Leave History
+                </Link>
               </>
             )}
           </nav>

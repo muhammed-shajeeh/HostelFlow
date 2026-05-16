@@ -22,6 +22,13 @@ import StudentList from './pages/StudentList';
 import StudentDashboard from './pages/StudentDashboard';
 import ParentDashboard from './pages/ParentDashboard';
 
+// Leave Management
+import StudentLeaveRequest from './pages/StudentLeaveRequest';
+import StudentLeaveHistory from './pages/StudentLeaveHistory';
+import PendingLeaves from './pages/PendingLeaves';
+import LeaveHistory from './pages/LeaveHistory';
+import QRScanner from './pages/QRScanner';
+
 function App() {
   return (
     <AuthProvider>
@@ -50,10 +57,19 @@ function App() {
                 <Route path="/rooms" element={<Rooms />} />
                 <Route path="/students/pending" element={<PendingStudents />} />
                 <Route path="/students/list" element={<StudentList />} />
+                
+                {/* Leave Management (Warden/Admin) */}
+                <Route path="/leaves/pending" element={<PendingLeaves />} />
+                <Route path="/leaves/history" element={<LeaveHistory />} />
+                <Route path="/leaves/scanner" element={<QRScanner />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
                 <Route path="/student" element={<StudentDashboard />} />
+                
+                {/* Leave Management (Student) */}
+                <Route path="/student/leaves/request" element={<StudentLeaveRequest />} />
+                <Route path="/student/leaves/history" element={<StudentLeaveHistory />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['PARENT']} />}>
