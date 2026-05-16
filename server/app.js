@@ -62,9 +62,30 @@ app.use('/api/notices', noticeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/parent', parentRoutes);
 app.use('/api/mess', messRoutes);
-app.get('/', (req, res) => res.json({ success: true, message: "Server running" }));
-
 // Error handling middleware
 app.use(errorHandler);
 
+// Smart auto-scheduler trigger: Runs every 15 minutes to guarantee 10:00 PM cutoff freeze
+setInterval(async () => {
+  try {
+    const now = new Date();
+    if (now.getHours() === 22) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+
+      const DailyMealRecord = require('./models/DailyMealRecord');
+      const count = await DailyMealRecord.countDocuments({ date: tomorrow });
+      if (count === 0) {
+        console.log(`[Auto-Freeze Engine] Automatically freezing daily meal records for tomorrow: ${tomorrow.toISOString()}`);
+        const { freezeDailyMealsForDate } = require('./controllers/messController');
+        await freezeDailyMealsForDate(tomorrow);
+      }
+    }
+  } catch (error) {
+    console.error('[Auto-Freeze Engine] Error running automatic daily freeze task:', error);
+  }
+}, 15 * 60 * 1000); // 15 minutes
+
 module.exports = app;
+

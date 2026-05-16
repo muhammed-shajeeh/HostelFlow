@@ -8,12 +8,17 @@ export default function StudentBilling() {
   
   // Unified invoices, bills & payments state
   const [invoices, setInvoices] = useState([]);
-  const [messBills, setMessBills] = useState([]);
-  const [hostelFees, setHostelFees] = useState([]);
+  const [messBills, setMessBills] = useState([]); // Legacy compatibility
+  const [hostelFees, setHostelFees] = useState([]); // Legacy compatibility
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [payingInvoice, setPayingInvoice] = useState(null);
   const [financialHold, setFinancialHold] = useState(false);
+
+  // Meal Ledger States
+  const [activeTab, setActiveTab] = useState('billing'); // 'billing', 'ledger'
+  const [mealRecords, setMealRecords] = useState([]);
+  const [loadingLedger, setLoadingLedger] = useState(false);
 
   // Receipt Modal State
   const [receiptDetail, setReceiptDetail] = useState(null);
@@ -29,6 +34,7 @@ export default function StudentBilling() {
 
   useEffect(() => {
     fetchBillingInfo();
+    fetchMealLedgerLogs();
   }, []);
 
   const fetchBillingInfo = async () => {
@@ -44,6 +50,18 @@ export default function StudentBilling() {
       toast.error('Failed to load dues & transaction history.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMealLedgerLogs = async () => {
+    setLoadingLedger(true);
+    try {
+      const res = await api.get(`/mess/meal-ledger/${user._id}`);
+      setMealRecords(res.data.records || []);
+    } catch (error) {
+      console.log('Failed to fetch daily meal records', error);
+    } finally {
+      setLoadingLedger(false);
     }
   };
 
@@ -156,6 +174,8 @@ export default function StudentBilling() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12 font-sans">
+      
+      {/* Header Profile summary */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <div>
           <h2 className="text-3xl font-black text-gray-800 tracking-tight">Student Billing Portal</h2>
@@ -167,7 +187,7 @@ export default function StudentBilling() {
         </div>
       </div>
 
-      {/* Phase 10 Hold Banner */}
+      {/* Financial Hold warning */}
       {financialHold && (
         <div className="bg-red-50 border border-red-200 p-4 rounded-xl text-red-800 text-xs font-bold space-y-1">
           <div className="flex items-center gap-2 text-red-700 font-extrabold text-sm">
@@ -179,7 +199,7 @@ export default function StudentBilling() {
         </div>
       )}
 
-      {/* Due Warning Banner */}
+      {/* Dues Alert banner */}
       {totalOutstanding > 0 && !financialHold && (
         <div className="bg-orange-50 border border-orange-200 p-4 rounded-xl text-orange-800 text-xs font-bold flex items-center gap-3">
           <span>⚠️</span>
@@ -187,122 +207,198 @@ export default function StudentBilling() {
         </div>
       )}
 
-      {/* Invoices List */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-        <h3 className="text-lg font-black text-gray-800 tracking-tight mb-4">Monthly Combined Invoices</h3>
-        {invoices.length === 0 && messBills.length === 0 && hostelFees.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 italic">No invoices issued yet.</div>
-        ) : (
-          <div className="space-y-4">
-            {invoices.map(inv => (
-              <div key={inv._id} className="p-4 bg-gray-50 rounded-xl border border-gray-150 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-sm transition">
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <strong className="text-base text-gray-800">{new Date(inv.month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}</strong>
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
-                      inv.status === 'PAID' ? 'bg-green-100 text-green-700' :
-                      inv.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                    }`}>{inv.status}</span>
-                    {inv.financialHold && (
-                      <span className="bg-red-100 text-red-800 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">HOLD</span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-gray-500 font-medium">
-                    <div>Mess Charges: <strong className="text-gray-700">₹{inv.messCharges}</strong> ({inv.eligibleMeals} meals)</div>
-                    <div>Hostel Rent: <strong className="text-gray-700">₹{inv.hostelRent}</strong></div>
-                    <div>Maintenance & Elec: <strong className="text-gray-700">₹{inv.maintenanceFee + inv.electricityFee}</strong></div>
-                    {inv.discount > 0 && <div className="text-green-600 font-bold">Discount: -₹{inv.discount}</div>}
-                    {inv.fine > 0 && <div className="text-red-600 font-bold">Late Fine: +₹{inv.fine}</div>}
-                    {inv.adjustments !== 0 && <div className="text-indigo-600">Adj: +₹{inv.adjustments}</div>}
-                  </div>
-                  <span className="block text-[10px] text-gray-400">Due by: {new Date(inv.dueDate).toLocaleDateString()}</span>
-                </div>
-                <div className="text-right flex flex-col justify-center items-end self-stretch md:self-auto gap-1">
-                  <div className="text-lg font-black text-indigo-600">₹{inv.totalAmount}</div>
-                  {inv.amountPaid > 0 && inv.status !== 'PAID' && <div className="text-[10px] text-indigo-400 font-bold">Paid: ₹{inv.amountPaid}</div>}
-                  
-                  <div className="flex gap-1 mt-1">
-                    <button
-                      onClick={() => setTimelineInvoice(inv)}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] px-2.5 py-1 rounded transition"
-                    >
-                      📜 Timeline
-                    </button>
-                    {inv.status === 'PAID' ? (
-                      <span className="text-[9px] bg-green-150 text-green-800 font-black px-2.5 py-1 rounded uppercase">PAID</span>
-                    ) : (
-                      <button
-                        disabled={payingInvoice === inv._id}
-                        onClick={() => handlePayInvoice(inv)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] px-3 py-1 rounded shadow-sm transition"
-                      >
-                        {payingInvoice === inv._id ? 'Opening Checkout...' : 'Pay Combined Bill'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Legacy compatibility maps */}
-            {messBills.map(b => (
-              <div key={b._id} className="p-4 bg-yellow-50/30 rounded-xl border border-yellow-100 flex justify-between items-center">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <strong className="text-sm text-gray-800">{b.month} (Mess Legacy)</strong>
-                    <span className="text-[9px] bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded">LEGACY</span>
-                  </div>
-                  <span className="text-xs text-gray-500">Meals skipped: {b.totalMealsSkipped} | Consumed: {b.consumedMeals}</span>
-                </div>
-                <div className="text-right">
-                  <div className="font-black text-yellow-700">₹{b.totalAmount}</div>
-                  <span className="text-[10px] font-black uppercase text-green-600">{b.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Navigation Tabs */}
+      <div className="flex gap-2 border-b pb-2">
+        <button
+          onClick={() => setActiveTab('billing')}
+          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
+            activeTab === 'billing' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          }`}
+        >
+          📂 Combined Invoices
+        </button>
+        <button
+          onClick={() => setActiveTab('ledger')}
+          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
+            activeTab === 'ledger' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          }`}
+        >
+          📅 Daily Meal Consumption logs
+        </button>
       </div>
 
-      {/* Payment History & Ledger logs */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-        <h3 className="text-lg font-black text-gray-800 tracking-tight mb-4">Completed Payments History</h3>
-        {payments.length === 0 ? (
-          <div className="text-center py-6 text-gray-400 italic">No payment history found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-250 text-xs">
-              <thead className="bg-gray-50 font-black text-gray-500 uppercase tracking-wider">
-                <tr>
-                  <th className="px-6 py-3 text-left">Paid Date</th>
-                  <th className="px-6 py-3 text-left">Transaction Reference</th>
-                  <th className="px-6 py-3 text-left">Paid via</th>
-                  <th className="px-6 py-3 text-left">Paid Amount</th>
-                  <th className="px-6 py-3 text-center">Receipt</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-sm font-sans font-medium text-gray-600">
-                {payments.map(p => (
-                  <tr key={p._id}>
-                    <td className="px-6 py-3 whitespace-nowrap">{new Date(p.paidAt).toLocaleDateString()}</td>
-                    <td className="px-6 py-3 whitespace-nowrap font-mono text-xs">{p.razorpayPaymentId || 'Simulated SandBox API'}</td>
-                    <td className="px-6 py-3 whitespace-nowrap">{p.paymentMethod || 'Online Transfer'}</td>
-                    <td className="px-6 py-3 whitespace-nowrap font-black text-green-600">₹{p.amount}</td>
-                    <td className="px-6 py-3 whitespace-nowrap text-center">
-                      <button
-                        onClick={() => openReceiptModal(p._id)}
-                        className="px-3 py-1 bg-green-50 hover:bg-green-150 text-green-700 rounded border border-green-200 transition font-bold text-xs"
-                      >
-                        📄 Download Receipt
-                      </button>
-                    </td>
-                  </tr>
+      {activeTab === 'billing' ? (
+        <>
+          {/* Invoices List */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <h3 className="text-lg font-black text-gray-800 tracking-tight mb-4">Combined Monthly Invoices</h3>
+            {invoices.length === 0 && messBills.length === 0 && hostelFees.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 italic">No invoices issued yet.</div>
+            ) : (
+              <div className="space-y-4">
+                {invoices.map(inv => (
+                  <div key={inv._id} className="p-4 bg-gray-50 rounded-xl border border-gray-150 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-sm transition">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-base text-gray-800">{new Date(inv.month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}</strong>
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
+                          inv.status === 'PAID' ? 'bg-green-100 text-green-700' :
+                          inv.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                        }`}>{inv.status}</span>
+                        {inv.financialHold && (
+                          <span className="bg-red-100 text-red-800 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">HOLD</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-gray-500 font-medium">
+                        <div>Mess Charges: <strong className="text-gray-700">₹{inv.messCharges}</strong> ({inv.totalBreakfasts + inv.totalLunches + inv.totalDinners} meals)</div>
+                        <div>Hostel Rent: <strong className="text-gray-700">₹{inv.hostelRent}</strong></div>
+                        <div>Maintenance & Elec: <strong className="text-gray-700">₹{inv.maintenanceFee + inv.electricityFee}</strong></div>
+                        {inv.discount > 0 && <div className="text-green-600 font-bold">Discount: -₹{inv.discount}</div>}
+                        {inv.fine > 0 && <div className="text-red-600 font-bold">Late Fine: +₹{inv.fine}</div>}
+                        {inv.adjustments !== 0 && <div className="text-indigo-600">Adj: +₹{inv.adjustments}</div>}
+                      </div>
+                      <span className="block text-[10px] text-gray-400">Due by: {new Date(inv.dueDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="text-right flex flex-col justify-center items-end self-stretch md:self-auto gap-1">
+                      <div className="text-lg font-black text-indigo-600">₹{inv.totalAmount}</div>
+                      {inv.amountPaid > 0 && inv.status !== 'PAID' && <div className="text-[10px] text-indigo-400 font-bold">Paid: ₹{inv.amountPaid}</div>}
+                      
+                      <div className="flex gap-1 mt-1">
+                        <button
+                          onClick={() => setTimelineInvoice(inv)}
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] px-2.5 py-1 rounded transition"
+                        >
+                          📜 Timeline
+                        </button>
+                        {inv.status === 'PAID' ? (
+                          <span className="text-[9px] bg-green-150 text-green-800 font-black px-2.5 py-1 rounded uppercase">PAID</span>
+                        ) : (
+                          <button
+                            disabled={payingInvoice === inv._id}
+                            onClick={() => handlePayInvoice(inv)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] px-3 py-1 rounded shadow-sm transition"
+                          >
+                            {payingInvoice === inv._id ? 'Opening Checkout...' : 'Pay Combined Bill'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+
+                {/* Legacy backwards mapping compatibility */}
+                {messBills.map(b => (
+                  <div key={b._id} className="p-4 bg-yellow-50/30 rounded-xl border border-yellow-100 flex justify-between items-center">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm text-gray-800">{b.month} (Mess Legacy)</strong>
+                        <span className="text-[9px] bg-yellow-100 text-yellow-800 font-bold px-2 py-0.5 rounded">LEGACY</span>
+                      </div>
+                      <span className="text-xs text-gray-500">Meals skipped: {b.totalMealsSkipped} | Consumed: {b.consumedMeals}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-black text-yellow-700">₹{b.totalAmount}</div>
+                      <span className="text-[10px] font-black uppercase text-green-600">{b.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Payment History & Ledger logs */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <h3 className="text-lg font-black text-gray-800 tracking-tight mb-4">Completed Payments History</h3>
+            {payments.length === 0 ? (
+              <div className="text-center py-6 text-gray-400 italic">No payment history found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-250 text-xs">
+                  <thead className="bg-gray-50 font-black text-gray-500 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3 text-left">Paid Date</th>
+                      <th className="px-6 py-3 text-left">Transaction Reference</th>
+                      <th className="px-6 py-3 text-left">Paid via</th>
+                      <th className="px-6 py-3 text-left">Paid Amount</th>
+                      <th className="px-6 py-3 text-center">Receipt</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-sm font-sans font-medium text-gray-600">
+                    {payments.map(p => (
+                      <tr key={p._id}>
+                        <td className="px-6 py-3 whitespace-nowrap">{new Date(p.paidAt).toLocaleDateString()}</td>
+                        <td className="px-6 py-3 whitespace-nowrap font-mono text-xs">{p.razorpayPaymentId || 'Simulated SandBox API'}</td>
+                        <td className="px-6 py-3 whitespace-nowrap">{p.paymentMethod || 'Online Transfer'}</td>
+                        <td className="px-6 py-3 whitespace-nowrap font-black text-green-600">₹{p.amount}</td>
+                        <td className="px-6 py-3 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => openReceiptModal(p._id)}
+                            className="px-3 py-1 bg-green-50 hover:bg-green-150 text-green-700 rounded border border-green-200 transition font-bold text-xs"
+                          >
+                            📄 Download Receipt
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        /* Frozen Daily Meal logs calendar */
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+          <div>
+            <h3 className="text-lg font-black text-gray-800 tracking-tight">📅 Immutable Daily Meal Ledger logs</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Transparent list showing daily choices and lock-in reason logs to verify exact invoice totals.</p>
+          </div>
+
+          {loadingLedger ? (
+            <div className="text-center py-8 text-gray-400 italic">Reading ledger logs...</div>
+          ) : mealRecords.length === 0 ? (
+            <div className="text-center py-8 text-gray-400 italic">No frozen daily meal logs compiled yet.</div>
+          ) : (
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+              {mealRecords.map(rec => (
+                <div key={rec._id} className="p-3 bg-gray-50 border rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                  <div>
+                    <strong className="text-xs text-slate-800">{new Date(rec.date).toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                    {rec.manuallyModified && (
+                      <span className="ml-2 inline-block bg-yellow-100 text-yellow-800 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">🛠️ Corrected Override</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs font-bold">
+                    <div className="flex items-center gap-1.5">
+                      <span>🍳 Breakfast:</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${rec.breakfastIncluded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {rec.breakfastIncluded ? '✓ Included' : '✗ Skipped'}
+                      </span>
+                      <span className="text-[9px] text-gray-400">({rec.breakfastReason})</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span>🍛 Lunch:</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${rec.lunchIncluded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {rec.lunchIncluded ? '✓ Included' : '✗ Skipped'}
+                      </span>
+                      <span className="text-[9px] text-gray-400">({rec.lunchReason})</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span>🍲 Dinner:</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${rec.dinnerIncluded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {rec.dinnerIncluded ? '✓ Included' : '✗ Skipped'}
+                      </span>
+                      <span className="text-[9px] text-gray-400">({rec.dinnerReason})</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Invoice Timeline Modal */}
       {timelineInvoice && (

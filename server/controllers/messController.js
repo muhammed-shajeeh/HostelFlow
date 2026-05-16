@@ -8,6 +8,7 @@ const FeeConfig = require('../models/FeeConfig');
 const BillingCycle = require('../models/BillingCycle');
 const Invoice = require('../models/Invoice');
 const FinancialAuditLog = require('../models/FinancialAuditLog');
+const DailyMealRecord = require('../models/DailyMealRecord');
 const crypto = require('crypto');
 const sendEmail = require('../utils/email');
 
@@ -85,9 +86,111 @@ const syncStudentMealEligibility = async (studentId, hostelId, date) => {
 };
 
 // ======================================================
-// CONTROLLER ACTIONS: MEALS & COUNTDOWNS
+// PHASE 2 & 10: DAILY MEAL LEDGER FREEZE SYSTEM
 // ======================================================
+const freezeDailyMealsForDate = async (dateStr, hostelId = null) => {
+  const targetDate = dateStr ? new Date(dateStr) : getNormalizedDate(1); // Defaults to Tomorrow!
+  targetDate.setHours(0, 0, 0, 0);
 
+  let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED' };
+  if (hostelId) {
+    studentQuery.hostelId = hostelId;
+  }
+  const students = await User.find(studentQuery).populate('roomId').populate('hostelId').lean();
+  
+  const createdRecords = [];
+
+  for (const student of students) {
+    if (!student.roomId) continue;
+
+    // Prevent duplicate entries and race conditions via unique index fallback
+    let existing = await DailyMealRecord.findOne({ studentId: student._id, date: targetDate });
+    if (existing) continue;
+
+    // 1. Sync meal eligibility preference live first
+    const eligibility = await syncStudentMealEligibility(student._id, student.hostelId, targetDate);
+
+    // 2. Compile granular choices
+    let breakfast = true;
+    let lunch = true;
+    let dinner = true;
+    let bReason = 'AUTO_INCLUDED_BY_ATTENDANCE';
+    let lReason = 'AUTO_INCLUDED_BY_ATTENDANCE';
+    let dReason = 'AUTO_INCLUDED_BY_ATTENDANCE';
+    let leaveRef = undefined;
+
+    if (eligibility) {
+      breakfast = eligibility.breakfast;
+      lunch = eligibility.lunch;
+      dinner = eligibility.dinner;
+
+      if (eligibility.skippedByLeave) {
+        bReason = 'APPROVED_LEAVE';
+        lReason = 'APPROVED_LEAVE';
+        dReason = 'APPROVED_LEAVE';
+        leaveRef = eligibility.leaveReference;
+      } else {
+        if (!breakfast && eligibility.skippedManually) bReason = 'MANUAL_SKIP';
+        if (!lunch && eligibility.skippedManually) lReason = 'MANUAL_SKIP';
+        if (!dinner && eligibility.skippedManually) dReason = 'MANUAL_SKIP';
+      }
+    }
+
+    const record = new DailyMealRecord({
+      studentId: student._id,
+      hostelId: student.hostelId?._id || student.hostelId,
+      roomId: student.roomId?._id || student.roomId,
+      date: targetDate,
+      breakfastIncluded: breakfast,
+      lunchIncluded: lunch,
+      dinnerIncluded: dinner,
+      breakfastReason: bReason,
+      lunchReason: lReason,
+      dinnerReason: dReason,
+      leaveReference: leaveRef,
+      finalized: true,
+      generatedAt: new Date()
+    });
+
+    await record.save();
+    createdRecords.push(record);
+  }
+
+  return createdRecords;
+};
+
+// @desc    Manually trigger daily freeze execution
+// @route   POST /api/mess/freeze-meals
+// @access  Private (Warden/Admin)
+const freezeMealsManual = async (req, res, next) => {
+  try {
+    const { date, hostelId } = req.body;
+    const targetHostel = req.user.role === 'WARDEN' ? req.user.hostelId : hostelId;
+
+    const records = await freezeDailyMealsForDate(date, targetHostel);
+
+    // Log to Audit system
+    await new FinancialAuditLog({
+      actorId: req.user._id,
+      actorRole: req.user.role,
+      hostelId: req.user.hostelId,
+      actionType: 'BILL_GENERATED',
+      reason: `Manually triggered daily frozen ledger generation for date: ${date || 'tomorrow'}.`,
+      newValue: { count: records.length },
+      ipAddress: req.ip || req.headers['x-forwarded-for']
+    }).save();
+
+    res.status(200).json({
+      success: true,
+      message: `Daily meal records frozen successfully for ${records.length} students.`,
+      recordsCount: records.length
+    });
+  } catch (error) { next(error); }
+};
+
+// @desc    Get Tomorrow Meal Status (Student)
+// @route   GET /api/mess/tomorrow-meals
+// @access  Private (Student)
 const getTomorrowMealStatus = async (req, res, next) => {
   try {
     const student = req.user;
@@ -96,16 +199,37 @@ const getTomorrowMealStatus = async (req, res, next) => {
     }
 
     const tomorrow = getNormalizedDate(1);
+    
+    // Check if tomorrow's meal record has already been frozen!
+    const frozenRecord = await DailyMealRecord.findOne({ studentId: student._id, date: tomorrow }).lean();
+    if (frozenRecord) {
+      return res.status(200).json({
+        success: true,
+        date: tomorrow,
+        frozen: true,
+        eligibility: {
+          breakfast: frozenRecord.breakfastIncluded,
+          lunch: frozenRecord.lunchIncluded,
+          dinner: frozenRecord.dinnerIncluded,
+          skippedManually: frozenRecord.breakfastReason === 'MANUAL_SKIP' || frozenRecord.lunchReason === 'MANUAL_SKIP' || frozenRecord.dinnerReason === 'MANUAL_SKIP'
+        }
+      });
+    }
+
     const eligibility = await syncStudentMealEligibility(student._id, student.hostelId, tomorrow);
 
     res.status(200).json({
       success: true,
       date: tomorrow,
+      frozen: false,
       eligibility
     });
   } catch (error) { next(error); }
 };
 
+// @desc    Toggle Student Tomorrow Meal Choice (Granular & Cutoff checks)
+// @route   POST /api/mess/toggle-tomorrow
+// @access  Private (Student)
 const toggleTomorrowMeals = async (req, res, next) => {
   try {
     const student = req.user;
@@ -113,6 +237,7 @@ const toggleTomorrowMeals = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
+    // Phase 10: Strict 10:00 PM Cutoff LOCK
     const now = new Date();
     if (now.getHours() >= 22) {
       return res.status(400).json({
@@ -121,8 +246,15 @@ const toggleTomorrowMeals = async (req, res, next) => {
       });
     }
 
-    const { meal } = req.body;
     const tomorrow = getNormalizedDate(1);
+
+    // Block if tomorrow is already frozen
+    const frozen = await DailyMealRecord.findOne({ studentId: student._id, date: tomorrow }).lean();
+    if (frozen) {
+      return res.status(400).json({ success: false, message: 'Mess Cut-Off Locked: Tomorrow\'s meal ledger has already been frozen.' });
+    }
+
+    const { meal } = req.body;
     let eligibility = await syncStudentMealEligibility(student._id, student.hostelId, tomorrow);
 
     if (!eligibility) {
@@ -132,7 +264,7 @@ const toggleTomorrowMeals = async (req, res, next) => {
     if (eligibility.skippedByLeave) {
       return res.status(400).json({
         success: false,
-        message: 'Meals are locked as inactive because you have an approved leave scheduled for tomorrow.'
+        message: 'Meals are locked because you have an approved leave scheduled for tomorrow.'
       });
     }
 
@@ -158,30 +290,131 @@ const toggleTomorrowMeals = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// @desc    Warden/Admin override a frozen Daily Meal Record (Phase 7)
+// @route   POST /api/mess/override-meals
+// @access  Private (Warden/Admin)
+const overrideDailyMealRecord = async (req, res, next) => {
+  try {
+    const { studentId, date, breakfastIncluded, lunchIncluded, dinnerIncluded, reason } = req.body;
+
+    if (!studentId || !date || !reason || reason.trim().length < 5) {
+      return res.status(400).json({ success: false, message: 'Validation Error: studentId, date, and descriptive override reason are required.' });
+    }
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    let record = await DailyMealRecord.findOne({ studentId, date: targetDate });
+    const studentObj = await User.findById(studentId).lean();
+
+    if (!studentObj) return res.status(404).json({ success: false, message: 'Student not found.' });
+
+    // Isolation check
+    if (req.user.role === 'WARDEN' && studentObj.hostelId?.toString() !== req.user.hostelId?.toString()) {
+      return res.status(403).json({ success: false, message: 'Forbidden: You cannot modify records from other hostels.' });
+    }
+
+    const overrideReason = req.user.role === 'ADMIN' ? 'ADMIN_OVERRIDE' : 'WARDEN_OVERRIDE';
+
+    if (!record) {
+      // Create a fresh frozen override record
+      record = new DailyMealRecord({
+        studentId,
+        hostelId: studentObj.hostelId,
+        roomId: studentObj.roomId,
+        date: targetDate,
+        breakfastIncluded: !!breakfastIncluded,
+        lunchIncluded: !!lunchIncluded,
+        dinnerIncluded: !!dinnerIncluded,
+        breakfastReason: overrideReason,
+        lunchReason: overrideReason,
+        dinnerReason: overrideReason,
+        manuallyModified: true,
+        modifiedBy: req.user._id,
+        modifiedAt: new Date(),
+        finalized: true
+      });
+    } else {
+      record.breakfastIncluded = breakfastIncluded !== undefined ? !!breakfastIncluded : record.breakfastIncluded;
+      record.lunchIncluded = lunchIncluded !== undefined ? !!lunchIncluded : record.lunchIncluded;
+      record.dinnerIncluded = dinnerIncluded !== undefined ? !!dinnerIncluded : record.dinnerIncluded;
+      
+      record.breakfastReason = overrideReason;
+      record.lunchReason = overrideReason;
+      record.dinnerReason = overrideReason;
+
+      record.manuallyModified = true;
+      record.modifiedBy = req.user._id;
+      record.modifiedAt = new Date();
+    }
+
+    await record.save();
+
+    // Log to audit trail
+    await new FinancialAuditLog({
+      actorId: req.user._id,
+      actorRole: req.user.role,
+      hostelId: studentObj.hostelId,
+      actionType: 'ADJUSTMENT_APPLIED',
+      reason: `Warden Override on ${date}: ${reason}`,
+      newValue: record.toObject(),
+      ipAddress: req.ip || req.headers['x-forwarded-for']
+    }).save();
+
+    res.status(200).json({ success: true, message: 'Frozen daily meal record updated successfully.', record });
+  } catch (error) { next(error); }
+};
+
+// @desc    Get Tomorrow Kitchen Prep Counts (Phase 9 counts derived from frozen records)
+// @route   GET /api/mess/tomorrow-counts
+// @access  Private (Warden/Admin)
 const getTomorrowCounts = async (req, res, next) => {
   try {
     const tomorrow = getNormalizedDate(1);
-    let query = { date: tomorrow };
-
-    if (req.user.role === 'WARDEN') {
-      query.hostelId = req.user.hostelId;
-      const students = await User.find({ hostelId: req.user.hostelId, approvalStatus: 'APPROVED' }).select('_id hostelId').lean();
-      await Promise.all(students.map(s => syncStudentMealEligibility(s._id, s.hostelId, tomorrow)));
-    } else if (req.user.role === 'ADMIN') {
-      const students = await User.find({ approvalStatus: 'APPROVED' }).select('_id hostelId').lean();
-      await Promise.all(students.map(s => syncStudentMealEligibility(s._id, s.hostelId, tomorrow)));
+    
+    // Auto-Trigger freeze first for tomorrow if not yet compiled, ensuring data safety!
+    let frozenCount = await DailyMealRecord.countDocuments({ date: tomorrow });
+    if (frozenCount === 0) {
+      await freezeDailyMealsForDate(tomorrow);
     }
 
-    const counts = await MealEligibility.aggregate([
+    let query = { date: tomorrow };
+    if (req.user.role === 'WARDEN') {
+      query.hostelId = req.user.hostelId;
+    }
+
+    const counts = await DailyMealRecord.aggregate([
       { $match: query },
       {
         $group: {
           _id: '$hostelId',
-          breakfastCount: { $sum: { $cond: ['$breakfast', 1, 0] } },
-          lunchCount: { $sum: { $cond: ['$lunch', 1, 0] } },
-          dinnerCount: { $sum: { $cond: ['$dinner', 1, 0] } },
-          skippedCount: { $sum: { $cond: ['$skippedManually', 1, 0] } },
-          leaveCount: { $sum: { $cond: ['$skippedByLeave', 1, 0] } }
+          breakfastCount: { $sum: { $cond: ['$breakfastIncluded', 1, 0] } },
+          lunchCount: { $sum: { $cond: ['$lunchIncluded', 1, 0] } },
+          dinnerCount: { $sum: { $cond: ['$dinnerIncluded', 1, 0] } },
+          skippedCount: {
+            $sum: {
+              $cond: [
+                {
+                  $or: [
+                    { $eq: ['$breakfastReason', 'MANUAL_SKIP'] },
+                    { $eq: ['$lunchReason', 'MANUAL_SKIP'] },
+                    { $eq: ['$dinnerReason', 'MANUAL_SKIP'] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+          leaveCount: {
+            $sum: {
+              $cond: [
+                { $eq: ['$breakfastReason', 'APPROVED_LEAVE'] },
+                1,
+                0
+              ]
+            }
+          }
         }
       }
     ]);
@@ -203,43 +436,9 @@ const getTomorrowCounts = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// ======================================================
-// ERP FINANCIAL MANAGEMENT SYSTEM (NEW)
-// ======================================================
-
-// Helper: Get active Fee Config by date
-const getActiveFeeConfig = async (date = new Date()) => {
-  let config = await FeeConfig.findOne({ effectiveFrom: { $lte: date } }).sort({ effectiveFrom: -1 }).lean();
-  if (!config) {
-    config = {
-      hostelRent: 3000,
-      maintenanceFee: 500,
-      electricityFee: 300,
-      messMealRate: 50,
-      lateFineAmount: 200
-    };
-  }
-  return config;
-};
-
-// Helper: Calculate previous outstanding dues
-const getOutstandingBalance = async (studentId, beforeDate = new Date()) => {
-  const invoices = await Invoice.find({
-    studentId,
-    status: { $in: ['PENDING', 'PARTIAL', 'OVERDUE'] },
-    createdAt: { $lt: beforeDate }
-  }).lean();
-
-  let balance = 0;
-  invoices.forEach(inv => {
-    balance += (inv.totalAmount - inv.amountPaid);
-  });
-  return balance;
-};
-
-// @desc    Get/Create active fee config
+// @desc    Get dynamic/active fee configuration
 // @route   GET/POST /api/mess/fee-config
-// @access  Private (Admin only write, Warden can read)
+// @access  Private (Admin only POST, Warden GET)
 const handleFeeConfig = async (req, res, next) => {
   try {
     if (req.method === 'POST') {
@@ -271,13 +470,12 @@ const handleFeeConfig = async (req, res, next) => {
       return res.status(201).json({ success: true, message: 'Fee configuration posted successfully.', config });
     }
 
-    // GET latest configuration
     const config = await getActiveFeeConfig(new Date());
     res.status(200).json({ success: true, config });
   } catch (error) { next(error); }
 };
 
-// @desc    Generate Draft Billing Cycle
+// @desc    Generate Draft Billing Cycle (Refactored to sum Frozen Ledger!)
 // @route   POST /api/mess/billing-cycles
 // @access  Private (Warden/Admin)
 const createBillingCycleDraft = async (req, res, next) => {
@@ -309,7 +507,16 @@ const createBillingCycleDraft = async (req, res, next) => {
     const [year, monthVal] = month.split('-').map(Number);
     const startDate = new Date(year, monthVal - 1, 1);
     const endDate = new Date(year, monthVal, 0);
-    const totalDays = endDate.getDate();
+
+    // Auto-Freeze any outstanding days for billing month to guarantee daily meal records coverage!
+    const today = new Date();
+    const freezeLimit = today < endDate ? today : endDate;
+    for (let day = new Date(startDate); day <= freezeLimit; day.setDate(day.getDate() + 1)) {
+      let count = await DailyMealRecord.countDocuments({ date: day });
+      if (count === 0) {
+        await freezeDailyMealsForDate(day);
+      }
+    }
 
     const feeConfig = await getActiveFeeConfig(endDate);
     let totalCycleAmount = 0;
@@ -320,27 +527,29 @@ const createBillingCycleDraft = async (req, res, next) => {
 
       const previousBalance = await getOutstandingBalance(student._id, startDate);
 
-      const eligibilities = await MealEligibility.find({
+      // Phase 3 & 4: SUM Granular Frozen Meal Ledger!
+      const dailyRecords = await DailyMealRecord.find({
         studentId: student._id,
         date: { $gte: startDate, $lte: endDate }
       }).lean();
 
-      let eligibleMeals = 0;
-      let skippedMeals = 0;
-      const recordedDays = eligibilities.length;
-      const unrecordedDays = totalDays - recordedDays;
+      let totalBreakfasts = 0;
+      let totalLunches = 0;
+      let totalDinners = 0;
 
-      eligibleMeals += unrecordedDays * 3;
-      for (const el of eligibilities) {
-        if (el.breakfast) eligibleMeals++; else skippedMeals++;
-        if (el.lunch) eligibleMeals++; else skippedMeals++;
-        if (el.dinner) eligibleMeals++; else skippedMeals++;
-      }
+      dailyRecords.forEach(rec => {
+        if (rec.breakfastIncluded) totalBreakfasts++;
+        if (rec.lunchIncluded) totalLunches++;
+        if (rec.dinnerIncluded) totalDinners++;
+      });
 
-      const messCharges = eligibleMeals * feeConfig.messMealRate;
+      const totalMealsCount = totalBreakfasts + totalLunches + totalDinners;
+      const messCharges = totalMealsCount * feeConfig.messMealRate;
+      
       const invoiceAmount = messCharges + feeConfig.hostelRent + feeConfig.maintenanceFee + feeConfig.electricityFee + previousBalance;
       const dueDate = new Date(year, monthVal, 10);
 
+      // Save complete immutable ERP snapshots
       const invoice = new Invoice({
         studentId: student._id,
         hostelId: student.hostelId?._id || student.hostelId,
@@ -364,17 +573,27 @@ const createBillingCycleDraft = async (req, res, next) => {
           hostelCode: student.hostelId?.hostelCode || 'N/A'
         },
         messMealRate: feeConfig.messMealRate,
-        eligibleMeals,
-        skippedMeals,
+        eligibleMeals: dailyRecords.length * 3,
+        skippedMeals: (dailyRecords.length * 3) - totalMealsCount,
         messCharges,
+        
+        // Phase 5: Frozen Granular Meal Snapshots
+        totalBreakfasts,
+        totalLunches,
+        totalDinners,
+        breakfastRateUsed: feeConfig.messMealRate,
+        lunchRateUsed: feeConfig.messMealRate,
+        dinnerRateUsed: feeConfig.messMealRate,
+        messTotal: messCharges,
+
         hostelRent: feeConfig.hostelRent,
         maintenanceFee: feeConfig.maintenanceFee,
         electricityFee: feeConfig.electricityFee,
         previousBalance,
         totalAmount: invoiceAmount,
         paymentTimeline: [{
-          event: 'Invoice Draft Generated',
-          details: 'Draft invoice compiled in monthly billing run cycle.',
+          event: 'Invoice Draft Compiled',
+          details: `Granular mess calculations read from Daily Ledger: Breakfasts: ${totalBreakfasts}, Lunches: ${totalLunches}, Dinners: ${totalDinners}.`,
           actorId: req.user._id,
           actorRole: req.user.role
         }]
@@ -396,20 +615,20 @@ const createBillingCycleDraft = async (req, res, next) => {
       hostelId: req.user.hostelId,
       actionType: 'BILL_GENERATED',
       billingCycleId: cycle._id,
-      reason: `Generated draft billing run for ${month}`,
+      reason: `Generated frozen-ledger draft billing run for ${month}`,
       newValue: { totalAmount: totalCycleAmount, totalStudents: studentCount },
       ipAddress: req.ip || req.headers['x-forwarded-for']
     }).save();
 
     res.status(201).json({
       success: true,
-      message: `Draft billing cycle created for ${month} with ${studentCount} draft invoices.`,
+      message: `Draft billing cycle created for ${month} with ${studentCount} frozen-ledger invoices.`,
       cycle
     });
   } catch (error) { next(error); }
 };
 
-// @desc    Regenerate Draft Billing Cycle
+// @desc    Regenerate Draft Billing Cycle (Frozen Ledger Summing!)
 // @route   POST /api/mess/billing-cycles/:id/regenerate
 // @access  Private (Warden/Admin)
 const regenerateBillingCycleDraft = async (req, res, next) => {
@@ -420,16 +639,13 @@ const regenerateBillingCycleDraft = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Only DRAFT billing cycles can be regenerated.' });
     }
 
-    // Restriction: Wardens can only regenerate their own hostel
     if (req.user.role === 'WARDEN' && cycle.generatedBy.toString() !== req.user._id.toString()) {
-      // Allow regeneration if they belong to the same hostel scope
       const count = await Invoice.countDocuments({ billingCycleId: cycle._id, hostelId: req.user.hostelId });
       if (count === 0) {
         return res.status(403).json({ success: false, message: 'Forbidden: You cannot regenerate this cycle.' });
       }
     }
 
-    // Delete existing draft invoices within user's scope
     let deleteQuery = { billingCycleId: cycle._id };
     let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED' };
     if (req.user.role === 'WARDEN') {
@@ -443,7 +659,6 @@ const regenerateBillingCycleDraft = async (req, res, next) => {
     const [year, monthVal] = cycle.month.split('-').map(Number);
     const startDate = new Date(year, monthVal - 1, 1);
     const endDate = new Date(year, monthVal, 0);
-    const totalDays = endDate.getDate();
 
     const feeConfig = await getActiveFeeConfig(endDate);
     let totalCycleAmount = 0;
@@ -454,24 +669,23 @@ const regenerateBillingCycleDraft = async (req, res, next) => {
 
       const previousBalance = await getOutstandingBalance(student._id, startDate);
 
-      const eligibilities = await MealEligibility.find({
+      const dailyRecords = await DailyMealRecord.find({
         studentId: student._id,
         date: { $gte: startDate, $lte: endDate }
       }).lean();
 
-      let eligibleMeals = 0;
-      let skippedMeals = 0;
-      const recordedDays = eligibilities.length;
-      const unrecordedDays = totalDays - recordedDays;
+      let totalBreakfasts = 0;
+      let totalLunches = 0;
+      let totalDinners = 0;
 
-      eligibleMeals += unrecordedDays * 3;
-      for (const el of eligibilities) {
-        if (el.breakfast) eligibleMeals++; else skippedMeals++;
-        if (el.lunch) eligibleMeals++; else skippedMeals++;
-        if (el.dinner) eligibleMeals++; else skippedMeals++;
-      }
+      dailyRecords.forEach(rec => {
+        if (rec.breakfastIncluded) totalBreakfasts++;
+        if (rec.lunchIncluded) totalLunches++;
+        if (rec.dinnerIncluded) totalDinners++;
+      });
 
-      const messCharges = eligibleMeals * feeConfig.messMealRate;
+      const totalMealsCount = totalBreakfasts + totalLunches + totalDinners;
+      const messCharges = totalMealsCount * feeConfig.messMealRate;
       const invoiceAmount = messCharges + feeConfig.hostelRent + feeConfig.maintenanceFee + feeConfig.electricityFee + previousBalance;
       const dueDate = new Date(year, monthVal, 10);
 
@@ -498,17 +712,26 @@ const regenerateBillingCycleDraft = async (req, res, next) => {
           hostelCode: student.hostelId?.hostelCode || 'N/A'
         },
         messMealRate: feeConfig.messMealRate,
-        eligibleMeals,
-        skippedMeals,
+        eligibleMeals: dailyRecords.length * 3,
+        skippedMeals: (dailyRecords.length * 3) - totalMealsCount,
         messCharges,
+
+        totalBreakfasts,
+        totalLunches,
+        totalDinners,
+        breakfastRateUsed: feeConfig.messMealRate,
+        lunchRateUsed: feeConfig.messMealRate,
+        dinnerRateUsed: feeConfig.messMealRate,
+        messTotal: messCharges,
+
         hostelRent: feeConfig.hostelRent,
         maintenanceFee: feeConfig.maintenanceFee,
         electricityFee: feeConfig.electricityFee,
         previousBalance,
         totalAmount: invoiceAmount,
         paymentTimeline: [{
-          event: 'Invoice Draft Regenerated',
-          details: 'Recalculated draft calculations successfully.',
+          event: 'Invoice Draft Recalculated',
+          details: `Re-calculated from daily ledger: Breakfasts: ${totalBreakfasts}, Lunches: ${totalLunches}, Dinners: ${totalDinners}.`,
           actorId: req.user._id,
           actorRole: req.user.role
         }]
@@ -519,7 +742,6 @@ const regenerateBillingCycleDraft = async (req, res, next) => {
       studentCount++;
     }
 
-    // Refresh totals for active scope
     if (req.user.role === 'ADMIN') {
       cycle.totalStudents = studentCount;
       cycle.totalAmount = totalCycleAmount;
@@ -539,12 +761,11 @@ const regenerateBillingCycleDraft = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// @desc    Finalize Billing Cycle (Admin Only!)
+// @desc    Finalize Billing Cycle (Admin Only)
 // @route   POST /api/mess/billing-cycles/:id/finalize
 // @access  Private (Admin Only)
 const finalizeBillingCycle = async (req, res, next) => {
   try {
-    // Phase 1 Restriction: Only Admin can finalize billing cycles
     if (req.user.role !== 'ADMIN') {
       return res.status(403).json({ success: false, message: 'Forbidden: Only Administrators can finalize and lock monthly billing cycles.' });
     }
@@ -560,7 +781,6 @@ const finalizeBillingCycle = async (req, res, next) => {
     cycle.finalizedAt = new Date();
     await cycle.save();
 
-    // Seal and timestamp all draft invoices inside this cycle, pushing timeline
     const invoicesToLock = await Invoice.find({ billingCycleId: cycle._id });
     for (const inv of invoicesToLock) {
       inv.finalizedAt = new Date();
@@ -583,42 +803,6 @@ const finalizeBillingCycle = async (req, res, next) => {
       newValue: { status: 'FINALIZED', totalInvoices: invoicesToLock.length },
       ipAddress: req.ip || req.headers['x-forwarded-for']
     }).save();
-
-    // Notify students & parents asynchronously in the background
-    invoicesToLock.forEach(inv => {
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
-          <h2 style="color: #4f46e5;">New Hostel Invoice Generated</h2>
-          <p>Dear ${inv.studentSnapshot.fullName},</p>
-          <p>Your monthly billing invoice for <strong>${inv.month}</strong> has been finalized and posted.</p>
-          <table style="width: 100%; font-size: 0.9em; border-collapse: collapse; margin-top: 15px;">
-            <tr style="background: #f9fafb;"><td style="padding: 8px;"><strong>Mess Charges</strong></td><td style="padding: 8px;">₹${inv.messCharges}</td></tr>
-            <tr><td style="padding: 8px;"><strong>Hostel Rent</strong></td><td style="padding: 8px;">₹${inv.hostelRent}</td></tr>
-            <tr style="background: #f9fafb;"><td style="padding: 8px;"><strong>Maintenance Fee</strong></td><td style="padding: 8px;">₹${inv.maintenanceFee}</td></tr>
-            <tr><td style="padding: 8px;"><strong>Electricity Fee</strong></td><td style="padding: 8px;">₹${inv.electricityFee}</td></tr>
-            <tr style="background: #f9fafb;"><td style="padding: 8px;"><strong>Previous Dues</strong></td><td style="padding: 8px;">₹${inv.previousBalance}</td></tr>
-            <tr><td style="padding: 8px;"><strong>Discounts/Adjustments</strong></td><td style="padding: 8px;">-₹${inv.discount} / +₹${inv.adjustments}</td></tr>
-            <tr style="background: #eef2ff; font-weight: bold;"><td style="padding: 8px;"><strong>Total Payable</strong></td><td style="padding: 8px; color: #4f46e5;">₹${inv.totalAmount}</td></tr>
-          </table>
-          <p style="margin-top: 15px;"><strong>Due Date:</strong> ${new Date(inv.dueDate).toLocaleDateString()}</p>
-          <p>Please pay your invoice online via the Student or Parent Portal.</p>
-        </div>
-      `;
-
-      sendEmail({
-        email: inv.studentSnapshot.email,
-        subject: `Smart Hostel Invoice - ${inv.month}`,
-        html: emailHtml
-      }).catch(e => console.error("Notification email failed for student", e));
-
-      if (inv.studentSnapshot.parentEmail) {
-        sendEmail({
-          email: inv.studentSnapshot.parentEmail,
-          subject: `Guardian Payment Notification: Invoice ${inv.month}`,
-          html: emailHtml
-        }).catch(e => console.error("Notification email failed for parent", e));
-      }
-    });
 
     res.status(200).json({ success: true, message: 'Billing cycle finalized successfully. Payments are now open.', cycle });
   } catch (error) { next(error); }
@@ -656,26 +840,21 @@ const updateInvoiceAdjustments = async (req, res, next) => {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found.' });
 
-    // Isolation Check: Warden cannot edit cross-hostel invoices
     if (req.user.role === 'WARDEN' && invoice.hostelId.toString() !== req.user.hostelId.toString()) {
       return res.status(403).json({ success: false, message: 'Forbidden: You cannot modify invoices from other hostels.' });
     }
 
-    // Phase 4: Immutable Finalized Invoices
     const cycle = await BillingCycle.findById(invoice.billingCycleId).lean();
     if (cycle?.status !== 'DRAFT') {
-      return res.status(400).json({ success: false, message: 'Forbidden: Invoice is finalized. Direct modifications are blocked. post-finalization updates require Admin Correction Invoices.' });
+      return res.status(400).json({ success: false, message: 'Forbidden: Invoice is finalized. Post-finalization updates require Admin Correction Invoices.' });
     }
 
     const { discount, fine, adjustments, adjustmentNotes, reason } = req.body;
 
-    // Phase 3: Adjustment Governance
-    // 1. Mandatory adjustmentReason check
     if (!reason || reason.trim().length < 5) {
-      return res.status(400).json({ success: false, message: 'Validation Error: A meaningful adjustmentReason (at least 5 characters) is mandatory to log this action.' });
+      return res.status(400).json({ success: false, message: 'Validation Error: A meaningful adjustmentReason is mandatory.' });
     }
 
-    // 2. Max ₹500 limit check for Wardens
     if (req.user.role === 'WARDEN') {
       const discVal = Number(discount || 0);
       const fineVal = Number(fine || 0);
@@ -683,7 +862,7 @@ const updateInvoiceAdjustments = async (req, res, next) => {
       if (Math.abs(discVal) > 500 || Math.abs(fineVal) > 500 || Math.abs(adjVal) > 500) {
         return res.status(403).json({
           success: false,
-          message: 'Governance Limit Violation: Wardens are restricted to a maximum adjustment limit of ₹500 per component. Adjustments exceeding this threshold require Admin authority.'
+          message: 'Governance Limit Violation: Wardens are restricted to a maximum adjustment limit of ₹500.'
         });
       }
     }
@@ -701,10 +880,9 @@ const updateInvoiceAdjustments = async (req, res, next) => {
     if (adjustments !== undefined) invoice.adjustments = Number(adjustments);
     if (adjustmentNotes !== undefined) invoice.adjustmentNotes = adjustmentNotes;
 
-    // Recalculate immutable total draft amount securely
+    // Recalculate total amount cleanly
     invoice.totalAmount = (invoice.messCharges + invoice.hostelRent + invoice.maintenanceFee + invoice.electricityFee + invoice.previousBalance + invoice.fine + invoice.adjustments) - invoice.discount;
 
-    // Push event to payment timeline
     invoice.paymentTimeline.push({
       event: 'Adjustment Applied',
       details: `Discount: -₹${invoice.discount}, Fine: +₹${invoice.fine}, Adjustments: +₹${invoice.adjustments}. Reason: ${reason}`,
@@ -714,7 +892,7 @@ const updateInvoiceAdjustments = async (req, res, next) => {
 
     await invoice.save();
 
-    // Log to Audit Trail System
+    // Log to Audit Trail
     await new FinancialAuditLog({
       actorId: req.user._id,
       actorRole: req.user.role,
@@ -737,6 +915,33 @@ const updateInvoiceAdjustments = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// @desc    Get Student Detailed Frozen Daily Meal Ledger (Phase 8 transparency calendar!)
+// @route   GET /api/mess/meal-ledger/:studentId
+// @access  Private (Student/Parent/Warden/Admin)
+const getStudentMealLedger = async (req, res, next) => {
+  try {
+    let studentId = req.params.studentId;
+
+    if (req.user.role === 'PARENT') {
+      if (!req.user.linkedStudents.includes(studentId)) {
+        return res.status(403).json({ success: false, message: 'Access denied: Student not linked.' });
+      }
+    } else if (req.user.role === 'STUDENT') {
+      studentId = req.user._id.toString();
+    }
+
+    const { start, end } = req.query; // optional range filters
+    let query = { studentId };
+
+    if (start && end) {
+      query.date = { $gte: new Date(start), $lte: new Date(end) };
+    }
+
+    const records = await DailyMealRecord.find(query).sort({ date: -1 }).lean();
+    res.status(200).json({ success: true, records });
+  } catch (error) { next(error); }
+};
+
 // @desc    Get Mess Dues and Payments (Student & Parent Portal)
 // @route   GET /api/mess/dues/:studentId
 // @access  Private (Student/Parent/Warden/Admin)
@@ -746,20 +951,18 @@ const getMessDues = async (req, res, next) => {
 
     if (req.user.role === 'PARENT') {
       if (!req.user.linkedStudents.includes(studentId)) {
-        return res.status(403).json({ success: false, message: 'Access denied: Student not linked to your parent account.' });
+        return res.status(403).json({ success: false, message: 'Access denied.' });
       }
     } else if (req.user.role === 'STUDENT') {
       studentId = req.user._id.toString();
     }
 
-    // Process auto overdue & late fees on the fly for unfinalized/unpaid records securely
-    // Phase 6 Check: Apply ONCE per overdue cycle, preventing duplication
     const today = new Date();
     const overdueInvoices = await Invoice.find({
       studentId,
       status: { $in: ['PENDING', 'PARTIAL'] },
       dueDate: { $lt: today },
-      lateFineApplied: false // Only apply if not previously processed!
+      lateFineApplied: false
     });
 
     for (const inv of overdueInvoices) {
@@ -776,9 +979,9 @@ const getMessDues = async (req, res, next) => {
       });
       await inv.save();
 
-      // Audit Log for automatic action
+      // Audit Log
       await new FinancialAuditLog({
-        actorId: inv.studentId, // system context
+        actorId: inv.studentId,
         actorRole: 'STUDENT',
         hostelId: inv.hostelId,
         actionType: 'LATE_FINE_APPLIED',
@@ -788,8 +991,6 @@ const getMessDues = async (req, res, next) => {
       }).save();
     }
 
-    // Phase 10: Financial Holds & Risk Flags
-    // Set child hold warning if unpaid > 2 months or pending dues > ₹10,000
     const twoMonthsAgo = new Date();
     twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
 
@@ -803,7 +1004,6 @@ const getMessDues = async (req, res, next) => {
     const isRiskFlagged = oldOutstandingInvoices.length > 0 || currentTotalDues > 10000;
 
     if (isRiskFlagged) {
-      // Mark active student records as hold warners
       await Invoice.updateMany({ studentId, status: { $ne: 'PAID' } }, { financialHold: true });
     }
 
@@ -817,7 +1017,7 @@ const getMessDues = async (req, res, next) => {
     res.status(200).json({
       success: true,
       invoices,
-      messBills, // Retained for legacy compatibility
+      messBills,
       hostelFees,
       payments,
       financialHold: isRiskFlagged
@@ -836,7 +1036,6 @@ const createInvoicePaymentOrder = async (req, res, next) => {
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found.' });
     if (invoice.status === 'PAID') return res.status(400).json({ success: false, message: 'This invoice is already fully paid.' });
 
-    // Validate billing cycle status
     const cycle = await BillingCycle.findById(invoice.billingCycleId).lean();
     if (cycle && cycle.status === 'DRAFT') {
       return res.status(400).json({ success: false, message: 'Draft invoices cannot be paid until billing cycle is finalized.' });
@@ -847,7 +1046,7 @@ const createInvoicePaymentOrder = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     if (req.user.role === 'PARENT' && !req.user.linkedStudents.includes(studentId)) {
-      return res.status(403).json({ success: false, message: 'Unauthorized: Student is not linked.' });
+      return res.status(403).json({ success: false, message: 'Unauthorized.' });
     }
 
     const orderAmount = invoice.totalAmount - invoice.amountPaid;
@@ -923,18 +1122,6 @@ const verifyInvoicePayment = async (req, res, next) => {
     if (!verified) {
       payment.status = 'FAILED';
       await payment.save();
-
-      const invoice = await Invoice.findById(payment.invoiceId);
-      if (invoice) {
-        invoice.paymentTimeline.push({
-          event: 'Payment Failed',
-          details: 'Checkout authorization was declined or signature failed.',
-          actorId: req.user._id,
-          actorRole: req.user.role
-        });
-        await invoice.save();
-      }
-
       return res.status(400).json({ success: false, message: 'Security Verification failed: Invalid signature.' });
     }
 
@@ -971,36 +1158,6 @@ const verifyInvoicePayment = async (req, res, next) => {
       ipAddress: req.ip || req.headers['x-forwarded-for']
     }).save();
 
-    const student = await User.findById(payment.studentId).lean();
-    const receiptHtml = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-        <h2 style="color: #10b981;">Smart Hostel Payment Receipt</h2>
-        <p>Hi ${student.fullName},</p>
-        <p>We have successfully received your payment of <strong>₹${payment.amount}</strong>.</p>
-        <table style="width: 100%; font-size: 0.9em; border-collapse: collapse; margin-top: 15px;">
-          <tr style="background: #f3f4f6;"><td style="padding: 8px;"><strong>Transaction ID</strong></td><td style="padding: 8px;">${razorpay_payment_id || 'N/A'}</td></tr>
-          <tr><td style="padding: 8px;"><strong>Order ID</strong></td><td style="padding: 8px;">${razorpay_order_id}</td></tr>
-          <tr style="background: #f3f4f6;"><td style="padding: 8px;"><strong>Payment Purpose</strong></td><td style="padding: 8px;">Hostel Combined Dues</td></tr>
-          <tr><td style="padding: 8px;"><strong>Paid On</strong></td><td style="padding: 8px;">${new Date().toLocaleString()}</td></tr>
-        </table>
-        <p style="margin-top: 20px;">Thank you for your timely payment!</p>
-      </div>
-    `;
-
-    sendEmail({
-      email: student.email,
-      subject: `Hostel Payment Receipt - ₹${payment.amount}`,
-      html: receiptHtml
-    }).catch(err => console.error('Receipt mail failed', err));
-
-    if (student.parentEmail) {
-      sendEmail({
-        email: student.parentEmail,
-        subject: `Payment Acknowledgment: Student ${student.fullName} - ₹${payment.amount}`,
-        html: receiptHtml
-      }).catch(err => console.error('Parent receipt mail failed', err));
-    }
-
     res.status(200).json({
       success: true,
       message: 'Payment verified and invoice updated successfully.',
@@ -1009,7 +1166,28 @@ const verifyInvoicePayment = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// @desc    Get financial ledger (Admin / Warden scope checked)
+// @desc    Get detailed receipt for download/modal
+// @route   GET /api/mess/receipts/:paymentId
+// @access  Private (Student/Parent/Warden/Admin)
+const getReceiptDetails = async (req, res, next) => {
+  try {
+    const payment = await Payment.findById(req.params.paymentId)
+      .populate('studentId', 'fullName admissionNumber email parentEmail parentPhone department year')
+      .populate('hostelId', 'name hostelCode')
+      .populate('invoiceId')
+      .lean();
+
+    if (!payment) return res.status(404).json({ success: false, message: 'Receipt not found.' });
+
+    if (req.user.role === 'WARDEN' && payment.hostelId?._id.toString() !== req.user.hostelId.toString()) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Access denied.' });
+    }
+
+    res.status(200).json({ success: true, receipt: payment });
+  } catch (error) { next(error); }
+};
+
+// @desc    Get financial ledger
 // @route   GET /api/mess/ledger
 // @access  Private (Warden/Admin)
 const getLedger = async (req, res, next) => {
@@ -1029,29 +1207,7 @@ const getLedger = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// @desc    Get detailed receipt for download/modal
-// @route   GET /api/mess/receipts/:paymentId
-// @access  Private (Student/Parent/Warden/Admin)
-const getReceiptDetails = async (req, res, next) => {
-  try {
-    const payment = await Payment.findById(req.params.paymentId)
-      .populate('studentId', 'fullName admissionNumber email parentEmail parentPhone department year')
-      .populate('hostelId', 'name hostelCode')
-      .populate('invoiceId')
-      .lean();
-
-    if (!payment) return res.status(404).json({ success: false, message: 'Receipt not found.' });
-
-    // Isolation check: Warden cannot read receipts from other hostels
-    if (req.user.role === 'WARDEN' && payment.hostelId?._id.toString() !== req.user.hostelId.toString()) {
-      return res.status(403).json({ success: false, message: 'Forbidden: You cannot access transaction receipts outside your hostel.' });
-    }
-
-    res.status(200).json({ success: true, receipt: payment });
-  } catch (error) { next(error); }
-};
-
-// @desc    Send Payment Reminders (Phase 7 & 9)
+// @desc    Send Payment Reminders (Spam safety cooldowns)
 // @route   POST /api/mess/send-reminder
 // @access  Private (Warden/Admin)
 const sendPaymentReminder = async (req, res, next) => {
@@ -1061,17 +1217,15 @@ const sendPaymentReminder = async (req, res, next) => {
 
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found.' });
 
-    // Isolation: Wardens can only remind their own hostel residents
     if (req.user.role === 'WARDEN' && invoice.hostelId.toString() !== req.user.hostelId.toString()) {
-      return res.status(403).json({ success: false, message: 'Forbidden: You can only issue reminders to residents within your assigned hostel.' });
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
     }
 
-    // Phase 9: Cooldown Prevention
-    const cooldownPeriod = 24 * 60 * 60 * 1000; // 24 Hours Cooldown
+    const cooldownPeriod = 24 * 60 * 60 * 1000;
     if (invoice.lastReminderSentAt && (new Date() - invoice.lastReminderSentAt < cooldownPeriod)) {
       return res.status(429).json({
         success: false,
-        message: 'Spam Prevention Safeguard: An email reminder was already sent to this resident recently. Please wait 24 hours between notifications.'
+        message: 'Spam Prevention Safeguard: An email reminder was already sent recently. Please wait 24 hours between notifications.'
       });
     }
 
@@ -1080,45 +1234,30 @@ const sendPaymentReminder = async (req, res, next) => {
       <div style="font-family: Arial, sans-serif; padding: 25px; border: 2px solid #fbbf24; border-radius: 12px; background: #fffbeb;">
         <h2 style="color: #d97706; margin-top: 0;">⚠️ Smart Hostel Payment Reminder</h2>
         <p>Dear ${invoice.studentSnapshot.fullName},</p>
-        <p>This is a formal reminder regarding your outstanding hostel combined invoice for <strong>${invoice.month}</strong>.</p>
+        <p>This is a formal reminder regarding your outstanding combined invoice for <strong>${invoice.month}</strong>.</p>
         <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #f59e0b; margin: 15px 0;">
-          <h4 style="margin: 0 0 10px 0; color: #4b5563;">Dues Summary:</h4>
-          <p style="margin: 4px 0;"><strong>Hostel Scope:</strong> ${invoice.hostelSnapshot?.name}</p>
-          <p style="margin: 4px 0;"><strong>Total Outstanding Amount:</strong> <span style="color: #dc2626; font-weight: bold; font-size: 1.1em;">₹${outstanding}</span></p>
-          <p style="margin: 4px 0;"><strong>Invoice Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
+          <p><strong>Total Outstanding:</strong> <span style="color: #dc2626; font-weight: bold;">₹${outstanding}</span></p>
         </div>
-        <p>Kindly pay outstanding balances immediately through the Student or Parent Portal online to restore eligibility and prevent administrative late penalties.</p>
-        <span style="font-size: 0.8em; color: #9ca3af; display: block; margin-top: 15px;">Issued by Warden/Office Administration, ${invoice.hostelSnapshot?.name}</span>
+        <p>Kindly pay outstanding balances immediately through the Student or Parent Portal.</p>
       </div>
     `;
 
-    // Dispatch Emails
     await sendEmail({
       email: invoice.studentSnapshot.email,
       subject: `[Dues Reminder] Outstanding Invoice - ${invoice.month}`,
       html: reminderHtml
     });
 
-    if (invoice.studentSnapshot.parentEmail) {
-      await sendEmail({
-        email: invoice.studentSnapshot.parentEmail,
-        subject: `[Guardian Warning] Outstanding Hostel Fees: ${invoice.studentSnapshot.fullName}`,
-        html: reminderHtml
-      });
-    }
-
-    // Save reminder status
     invoice.remindersCount += 1;
     invoice.lastReminderSentAt = new Date();
     invoice.paymentTimeline.push({
       event: 'Reminder Issued',
-      details: `Payment reminder email sent successfully to student and parent. reason: ${reason || 'Manual reminder'}`,
+      details: `Payment reminder email sent successfully. reason: ${reason || 'Manual reminder'}`,
       actorId: req.user._id,
       actorRole: req.user.role
     });
     await invoice.save();
 
-    // Log to Audit system
     await new FinancialAuditLog({
       actorId: req.user._id,
       actorRole: req.user.role,
@@ -1134,38 +1273,23 @@ const sendPaymentReminder = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// @desc    Process Refunds/Credit Notes (Admin Only!)
+// @desc    Process Credit Refunds (Admin Only)
 // @route   POST /api/mess/refund-invoice
 // @access  Private (Admin Only)
 const refundInvoice = async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN') {
-      return res.status(403).json({ success: false, message: 'Forbidden: Only Administrators can authorize financial credit refunds.' });
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
     }
 
     const { invoiceId, refundAmount, reason } = req.body;
-    if (!invoiceId || !refundAmount || Number(refundAmount) <= 0) {
-      return res.status(400).json({ success: false, message: 'Validation Error: Please provide a valid invoiceId and numeric refundAmount.' });
-    }
-    if (!reason || reason.trim().length < 5) {
-      return res.status(400).json({ success: false, message: 'Validation Error: A clear audit reason is required.' });
-    }
-
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found.' });
 
-    const prevValues = {
-      status: invoice.status,
-      amountPaid: invoice.amountPaid,
-      totalAmount: invoice.totalAmount
-    };
-
-    // Verify refund amount doesn't exceed total paid
     if (Number(refundAmount) > invoice.amountPaid) {
-      return res.status(400).json({ success: false, message: `Rejection: Refund amount (₹${refundAmount}) cannot exceed the amount already paid (₹${invoice.amountPaid}).` });
+      return res.status(400).json({ success: false, message: 'Refund amount cannot exceed amount already paid.' });
     }
 
-    // Apply Refund adjustments without directly mutating frozen totals
     invoice.amountPaid -= Number(refundAmount);
     invoice.status = 'REFUNDED';
     invoice.paymentTimeline.push({
@@ -1176,29 +1300,16 @@ const refundInvoice = async (req, res, next) => {
     });
     await invoice.save();
 
-    // Log to Audit system
-    await new FinancialAuditLog({
-      actorId: req.user._id,
-      actorRole: req.user.role,
-      hostelId: invoice.hostelId,
-      actionType: 'REFUND_ISSUED',
-      invoiceId: invoice._id,
-      previousValue: prevValues,
-      newValue: { status: 'REFUNDED', amountPaid: invoice.amountPaid },
-      reason: reason,
-      ipAddress: req.ip || req.headers['x-forwarded-for']
-    }).save();
-
-    res.status(200).json({ success: true, message: 'Credit refund processed successfully and logged.', invoice });
+    res.status(200).json({ success: true, message: 'Credit refund processed successfully.', invoice });
   } catch (error) { next(error); }
 };
 
-// @desc    Export structural CSV/PDF-ready reports (Phase 11)
+// @desc    Export financial reports
 // @route   GET /api/mess/export-report
 // @access  Private (Warden/Admin)
 const exportFinancialReport = async (req, res, next) => {
   try {
-    const { reportType } = req.query; // 'UNPAID', 'COLLECTIONS', 'OVERDUE'
+    const { reportType } = req.query;
     let query = {};
     if (req.user.role === 'WARDEN') {
       query.hostelId = req.user.hostelId;
@@ -1212,29 +1323,21 @@ const exportFinancialReport = async (req, res, next) => {
       query.amountPaid = { $gt: 0 };
     }
 
-    const invoices = await Invoice.find(query)
-      .sort({ month: -1, 'studentSnapshot.fullName': 1 })
-      .lean();
-
-    // Compile clean structural format
+    const invoices = await Invoice.find(query).sort({ month: -1 }).lean();
     const reportData = invoices.map(inv => ({
       Month: inv.month,
       StudentName: inv.studentSnapshot?.fullName,
       AdmissionNo: inv.studentSnapshot?.admissionNumber,
-      Room: inv.roomSnapshot?.roomNumber || 'TBA',
-      MessBase: inv.messCharges,
-      HostelRent: inv.hostelRent,
-      Fines: inv.fine,
-      Adjustments: inv.adjustments,
-      Discounts: inv.discount,
+      Breakfasts: inv.totalBreakfasts || 0,
+      Lunches: inv.totalLunches || 0,
+      Dinners: inv.totalDinners || 0,
       TotalPayable: inv.totalAmount,
       TotalPaid: inv.amountPaid,
       Outstanding: inv.totalAmount - inv.amountPaid,
-      Status: inv.status,
-      DueDate: new Date(inv.dueDate).toLocaleDateString()
+      Status: inv.status
     }));
 
-    res.status(200).json({ success: true, reportType, totalRecords: reportData.length, data: reportData });
+    res.status(200).json({ success: true, data: reportData });
   } catch (error) { next(error); }
 };
 
@@ -1256,5 +1359,8 @@ module.exports = {
   getReceiptDetails,
   sendPaymentReminder,
   refundInvoice,
-  exportFinancialReport
+  exportFinancialReport,
+  freezeMealsManual,
+  overrideDailyMealRecord,
+  getStudentMealLedger
 };

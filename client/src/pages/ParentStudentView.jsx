@@ -14,6 +14,10 @@ export default function ParentStudentView() {
   const [payingInvoice, setPayingInvoice] = useState(null);
   const [financialHold, setFinancialHold] = useState(false);
 
+  // Daily Meal Ledger States
+  const [mealRecords, setMealRecords] = useState([]);
+  const [loadingLedger, setLoadingLedger] = useState(false);
+
   // Receipt Modal State
   const [receiptDetail, setReceiptDetail] = useState(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
@@ -32,9 +36,10 @@ export default function ParentStudentView() {
 
   const fetchStudentDetails = async () => {
     try {
-      const [studentRes, duesRes] = await Promise.all([
+      const [studentRes, duesRes, ledgerRes] = await Promise.all([
         api.get(`/parent/student/${id}`),
-        api.get(`/mess/dues/${id}`)
+        api.get(`/mess/dues/${id}`),
+        api.get(`/mess/meal-ledger/${id}`)
       ]);
       setData(studentRes.data.data);
       setInvoices(duesRes.data.invoices || []);
@@ -42,6 +47,7 @@ export default function ParentStudentView() {
       setHostelFees(duesRes.data.hostelFees || []);
       setPayments(duesRes.data.payments || []);
       setFinancialHold(duesRes.data.financialHold || false);
+      setMealRecords(ledgerRes.data.records || []);
     } catch (error) {
       toast.error('Failed to load student details');
     } finally {
@@ -224,7 +230,7 @@ export default function ParentStudentView() {
                         }`}>{inv.status}</span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-0.5 text-xs text-gray-500 font-medium">
-                        <div>Mess: ₹{inv.messCharges} <span className="text-[10px] text-gray-400">({inv.eligibleMeals} meals)</span></div>
+                        <div>Mess: ₹{inv.messCharges} <span className="text-[10px] text-gray-400">({inv.totalBreakfasts + inv.totalLunches + inv.totalDinners} meals)</span></div>
                         <div>Rent: ₹{inv.hostelRent}</div>
                         <div>Maint/Elec: ₹{inv.maintenanceFee + inv.electricityFee}</div>
                         {inv.discount > 0 && <div className="text-green-600">Discount: -₹{inv.discount}</div>}
@@ -261,6 +267,46 @@ export default function ParentStudentView() {
             )}
           </section>
 
+          {/* Frozen Daily Meal logs calendar for parents */}
+          <section className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
+            <div>
+              <h3 className="text-base font-black text-gray-800 tracking-tight flex items-center gap-2">
+                <span>📅</span> Immutable Daily Meal Ledger logs
+              </h3>
+              <p className="text-[11px] text-gray-400">Day-by-day frozen consumption records verifying total mess charges.</p>
+            </div>
+
+            {loadingLedger ? (
+              <div className="text-center py-4 italic text-gray-400">Reading records...</div>
+            ) : mealRecords.length === 0 ? (
+              <p className="text-xs text-gray-400 italic text-center py-4">No daily consumption records found.</p>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                {mealRecords.map(rec => (
+                  <div key={rec._id} className="p-2.5 bg-gray-50 border rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2 text-xs font-bold text-slate-700">
+                    <div>
+                      <span>{new Date(rec.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      {rec.manuallyModified && (
+                        <span className="ml-1 text-[8px] bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded font-black">OVERRIDE</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2.5 text-[10px]">
+                      <span className={`px-1.5 py-0.5 rounded ${rec.breakfastIncluded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        🍳 {rec.breakfastIncluded ? 'Included' : 'Skipped'}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded ${rec.lunchIncluded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        🍛 {rec.lunchIncluded ? 'Included' : 'Skipped'}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded ${rec.dinnerIncluded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        🍲 {rec.dinnerIncluded ? 'Included' : 'Skipped'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
           {/* Payments transaction records */}
           <section className="bg-white p-6 rounded-2xl border shadow-sm">
             <h3 className="text-sm font-black uppercase text-gray-400 tracking-wider mb-4">Transaction Dues History</h3>
@@ -282,7 +328,7 @@ export default function ParentStudentView() {
                     {payments.map(p => (
                       <tr key={p._id}>
                         <td className="px-4 py-2 whitespace-nowrap">{new Date(p.paidAt).toLocaleDateString()}</td>
-                        <td className="px-4 py-2 whitespace-nowrap font-mono text-[10px]">{p.razorpayPaymentId || 'Simulated SandBox API'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap font-mono text-[10px]">{p.razorpayPaymentId || 'Simulated Dev Fallback'}</td>
                         <td className="px-4 py-2 whitespace-nowrap capitalize">{p.billType.replace('_', ' ')} dues</td>
                         <td className="px-4 py-2 whitespace-nowrap font-black text-green-600">₹{p.amount}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-center">

@@ -69,6 +69,34 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  totalBreakfasts: {
+    type: Number,
+    default: 0
+  },
+  totalLunches: {
+    type: Number,
+    default: 0
+  },
+  totalDinners: {
+    type: Number,
+    default: 0
+  },
+  breakfastRateUsed: {
+    type: Number,
+    default: 0
+  },
+  lunchRateUsed: {
+    type: Number,
+    default: 0
+  },
+  dinnerRateUsed: {
+    type: Number,
+    default: 0
+  },
+  messTotal: {
+    type: Number,
+    default: 0
+  },
   hostelRent: {
     type: Number,
     required: true

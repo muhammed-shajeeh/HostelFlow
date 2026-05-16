@@ -17,7 +17,7 @@ export default function WardenMessManagement() {
 
   // Audit Logs & Master Ledger
   const [auditLogs, setAuditLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('cycles'); // 'cycles', 'ledger', 'audit'
+  const [activeTab, setActiveTab] = useState('cycles'); // 'cycles', 'ledger', 'audit', 'kitchen', 'overrides'
 
   // Create Cycle State
   const [targetMonth, setTargetMonth] = useState(() => {
@@ -66,12 +66,34 @@ export default function WardenMessManagement() {
   // Reminder trigger cooling state
   const [sendingReminderId, setSendingReminderId] = useState(null);
 
+  // Kitchen Prep Planning & Manual Freeze States
+  const [freezeDate, setFreezeDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  });
+  const [freezingLedger, setFreezingLedger] = useState(false);
+
+  // Manual Overrides States
+  const [studentsList, setStudentsList] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [overrideForm, setOverrideForm] = useState({
+    studentId: '',
+    date: new Date().toISOString().split('T')[0],
+    breakfastIncluded: true,
+    lunchIncluded: true,
+    dinnerIncluded: true,
+    reason: ''
+  });
+  const [submittingOverride, setSubmittingOverride] = useState(false);
+
   useEffect(() => {
     fetchTomorrowCounts();
     fetchBillingCycles();
     fetchUnpaidDues();
     fetchFeeConfig();
     fetchMasterLedgerAndAudits();
+    fetchStudents();
   }, []);
 
   const fetchTomorrowCounts = async () => {
@@ -84,6 +106,58 @@ export default function WardenMessManagement() {
       toast.error('Failed to load kitchen meal counts.');
     } finally {
       setLoadingCounts(false);
+    }
+  };
+
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const res = await api.get('/students');
+      setStudentsList(res.data.students || []);
+    } catch (error) {
+      console.log('Failed to fetch students', error);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const triggerManualFreeze = async () => {
+    setFreezingLedger(true);
+    try {
+      const res = await api.post('/mess/freeze-meals', { date: freezeDate });
+      toast.success(res.data.message);
+      fetchTomorrowCounts();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Manual freeze failed.');
+    } finally {
+      setFreezingLedger(false);
+    }
+  };
+
+  const submitManualOverride = async (e) => {
+    e.preventDefault();
+    if (!overrideForm.studentId) {
+      toast.error('Please select a resident student.');
+      return;
+    }
+    if (!overrideForm.reason || overrideForm.reason.trim().length < 5) {
+      toast.error('Descriptive override explanation (at least 5 characters) is required.');
+      return;
+    }
+    setSubmittingOverride(true);
+    try {
+      const res = await api.post('/mess/override-meals', overrideForm);
+      toast.success(res.data.message);
+      setOverrideForm({
+        ...overrideForm,
+        reason: ''
+      });
+      fetchTomorrowCounts();
+      fetchMasterLedgerAndAudits();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Override update rejected.');
+    } finally {
+      setSubmittingOverride(false);
     }
   };
 
@@ -380,7 +454,7 @@ export default function WardenMessManagement() {
       </div>
 
       {/* Tabs Layout */}
-      <div className="flex gap-2 border-b pb-2">
+      <div className="flex flex-wrap gap-2 border-b pb-2">
         <button 
           onClick={() => setActiveTab('cycles')}
           className={`px-4 py-2 rounded-xl font-black text-xs transition ${
@@ -398,6 +472,22 @@ export default function WardenMessManagement() {
           📊 Outstanding Debts Ledger
         </button>
         <button 
+          onClick={() => setActiveTab('kitchen')}
+          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
+            activeTab === 'kitchen' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          }`}
+        >
+          🍳 Kitchen Operations Prep
+        </button>
+        <button 
+          onClick={() => setActiveTab('overrides')}
+          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
+            activeTab === 'overrides' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          }`}
+        >
+          🛠️ Resident Overrides Ledger
+        </button>
+        <button 
           onClick={() => setActiveTab('audit')}
           className={`px-4 py-2 rounded-xl font-black text-xs transition ${
             activeTab === 'audit' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
@@ -406,6 +496,169 @@ export default function WardenMessManagement() {
           📜 Master Audit Trail Ledger
         </button>
       </div>
+
+      {/* Tab: Kitchen Operations Prep */}
+      {activeTab === 'kitchen' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4 lg:col-span-1">
+            <h3 className="text-base font-black text-slate-800">❄️ Freeze Daily Ledgers Manual</h3>
+            <p className="text-[11px] text-gray-400">
+              Locks resident meal plans into the immutable daily ledger immediately.
+            </p>
+            <div className="space-y-4 text-xs font-bold">
+              <div>
+                <label className="block text-[9px] uppercase text-gray-400 mb-1">Target Date to Freeze</label>
+                <input
+                  type="date"
+                  value={freezeDate}
+                  onChange={(e) => setFreezeDate(e.target.value)}
+                  className="w-full border rounded-xl px-3 py-2"
+                />
+              </div>
+              <button
+                onClick={triggerManualFreeze}
+                disabled={freezingLedger}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl font-bold transition shadow disabled:opacity-50"
+              >
+                {freezingLedger ? 'Freezing ledger...' : '❄️ Trigger Manual Freeze Run'}
+              </button>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+            <div>
+              <h3 className="text-base font-black text-slate-800">Frozen Kitchen Meal Preparation Plan</h3>
+              <p className="text-xs text-gray-400">Granular tomorrow prep lists compiled strictly from the locked daily ledger.</p>
+            </div>
+
+            {loadingCounts ? (
+              <div className="text-center p-8 italic text-gray-400">Reading meal records...</div>
+            ) : !counts ? (
+              <div className="text-center p-8 italic text-gray-400">No active meal ledger frozen yet for tomorrow.</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-center">
+                  <span className="block text-[9px] font-black text-indigo-600 uppercase">🍳 Breakfast</span>
+                  <strong className="text-3xl font-black text-indigo-700">{counts.breakfastCount || 0}</strong>
+                </div>
+                <div className="bg-green-50 border border-green-100 p-4 rounded-xl text-center">
+                  <span className="block text-[9px] font-black text-green-600 uppercase">🍛 Lunch</span>
+                  <strong className="text-3xl font-black text-green-700">{counts.lunchCount || 0}</strong>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl text-center">
+                  <span className="block text-[9px] font-black text-amber-600 uppercase">🍲 Dinner</span>
+                  <strong className="text-3xl font-black text-amber-700">{counts.dinnerCount || 0}</strong>
+                </div>
+                <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-center">
+                  <span className="block text-[9px] font-black text-red-600 uppercase">🚷 Manually Skipped</span>
+                  <strong className="text-2xl font-black text-red-700">{counts.skippedCount || 0}</strong>
+                </div>
+                <div className="bg-slate-50 border p-4 rounded-xl text-center">
+                  <span className="block text-[9px] font-black text-slate-500 uppercase">✈️ On Leave</span>
+                  <strong className="text-2xl font-black text-slate-700">{counts.leaveCount || 0}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Resident Overrides Ledger */}
+      {activeTab === 'overrides' && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+          <div>
+            <h3 className="text-lg font-black text-slate-800">🛠️ Resident Meal Override Panel</h3>
+            <p className="text-xs text-gray-400">Apply custom corrections for early returns, unexpected leaves or special diet entries.</p>
+          </div>
+
+          <form onSubmit={submitManualOverride} className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-bold text-slate-600 max-w-3xl">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[9px] uppercase text-gray-400 mb-1">Select Resident Student</label>
+                <select
+                  value={overrideForm.studentId}
+                  onChange={(e) => setOverrideForm({ ...overrideForm, studentId: e.target.value })}
+                  className="w-full border rounded-xl px-3 py-2 font-bold focus:outline-indigo-500"
+                  required
+                >
+                  <option value="">-- Select Student --</option>
+                  {studentsList.map(st => (
+                    <option key={st._id} value={st._id}>
+                      {st.fullName} ({st.admissionNumber}) - Room {st.roomId?.roomNumber || 'TBA'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9px] uppercase text-gray-400 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={overrideForm.date}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, date: e.target.value })}
+                    className="w-full border rounded-xl px-3 py-2 font-bold focus:outline-indigo-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border p-4 rounded-xl space-y-2">
+                <span className="block text-[10px] text-slate-400 uppercase">Granular Inclusion Plan</span>
+                <label className="flex items-center gap-2 cursor-pointer font-black text-xs text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={overrideForm.breakfastIncluded}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, breakfastIncluded: e.target.checked })}
+                    className="rounded border text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  />
+                  🍳 Breakfast Included
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer font-black text-xs text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={overrideForm.lunchIncluded}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, lunchIncluded: e.target.checked })}
+                    className="rounded border text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  />
+                  🍛 Lunch Included
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer font-black text-xs text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={overrideForm.dinnerIncluded}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, dinnerIncluded: e.target.checked })}
+                    className="rounded border text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  />
+                  🍲 Dinner Included
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-4 flex flex-col justify-between">
+              <div>
+                <label className="block text-[9px] uppercase text-red-500 mb-1">Mandatory Correction Audit Reason *</label>
+                <textarea
+                  value={overrideForm.reason}
+                  onChange={(e) => setOverrideForm({ ...overrideForm, reason: e.target.value })}
+                  placeholder="Explain exactly why this override correction is requested..."
+                  className="w-full border border-red-200 rounded-xl p-3 focus:outline-red-500 bg-red-50/20"
+                  rows="5"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingOverride}
+                className="w-full bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-xl font-bold shadow-sm transition disabled:opacity-50"
+              >
+                {submittingOverride ? 'Submitting Override...' : '💾 Apply Operational Override'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Tab: Cycles Workspace */}
       {activeTab === 'cycles' && (
@@ -550,7 +803,7 @@ export default function WardenMessManagement() {
                                 )}
                               </td>
                               <td className="px-4 py-3 space-y-0.5 text-gray-500">
-                                <div>Mess: ₹{inv.messCharges} <span className="text-[9px] text-gray-400">({inv.eligibleMeals} meals)</span></div>
+                                <div>Mess: ₹{inv.messCharges} <span className="text-[9px] text-gray-400">({inv.totalBreakfasts + inv.totalLunches + inv.totalDinners} meals)</span></div>
                                 <div>Rent: ₹{inv.hostelRent}</div>
                                 <div>Maint & Elec: ₹{inv.maintenanceFee + inv.electricityFee}</div>
                               </td>
@@ -931,7 +1184,7 @@ export default function WardenMessManagement() {
                 <button
                   type="button"
                   onClick={() => setRefundInvoiceObj(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-250 text-gray-700 rounded-lg text-xs"
+                  className="px-4 py-2 bg-gray-150 hover:bg-gray-250 text-gray-700 rounded-lg text-xs"
                 >
                   Cancel
                 </button>

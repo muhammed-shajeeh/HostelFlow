@@ -18,7 +18,10 @@ const {
   getReceiptDetails,
   sendPaymentReminder,
   refundInvoice,
-  exportFinancialReport
+  exportFinancialReport,
+  freezeMealsManual,
+  overrideDailyMealRecord,
+  getStudentMealLedger
 } = require('../controllers/messController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
@@ -30,6 +33,11 @@ router.use(authMiddleware);
 router.get('/tomorrow-meals', roleMiddleware('STUDENT'), getTomorrowMealStatus);
 router.post('/toggle-tomorrow', roleMiddleware('STUDENT'), toggleTomorrowMeals);
 router.get('/tomorrow-counts', roleMiddleware('WARDEN', 'ADMIN'), getTomorrowCounts);
+
+// Frozen Daily Ledger manual override, freeze and student logs
+router.post('/freeze-meals', roleMiddleware('WARDEN', 'ADMIN'), freezeMealsManual);
+router.post('/override-meals', roleMiddleware('WARDEN', 'ADMIN'), overrideDailyMealRecord);
+router.get('/meal-ledger/:studentId', getStudentMealLedger);
 
 // Fee Configuration Engine (Warden can view, Admin can edit)
 router.get('/fee-config', handleFeeConfig);
