@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../api';
+import api from '../api'; // This uses the base URL configured in api/index.js
 import toast from 'react-hot-toast';
 
 export default function StudentRegister() {
   const navigate = useNavigate();
+  
+  // State for storing the list of hostels fetched from backend
   const [hostels, setHostels] = useState([]);
-  const [loading, setLoading] = useState(false);
+  
+  // UI states for loading and error handling
+  const [fetchingHostels, setFetchingHostels] = useState(true);
+  const [hostelError, setHostelError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Main form state
   const [formData, setFormData] = useState({
     fullName: '', email: '', password: '', 
     department: '', year: '1', semester: '1', 
     admissionNumber: '', parentName: '', parentEmail: '', 
-    hostelId: '',
+    hostelId: '', // Will store the actual MongoDB _id
     sameDepartmentPreferred: false,
     sameBatchPreferred: false,
     preferredFloor: '',
@@ -19,51 +27,84 @@ export default function StudentRegister() {
     specialNotes: ''
   });
 
+  // useEffect runs ONCE when the component mounts to fetch hostels
   useEffect(() => {
-    // Fetch public hostels list
+    let isMounted = true; // Optimization: prevent setting state on unmounted component
+
     const fetchHostels = async () => {
       try {
+        setFetchingHostels(true);
+        setHostelError('');
+        
+        // Fetch real backend data from MongoDB
         const res = await api.get('/hostels'); 
-        // Need a public route or just use the available ones if not protected.
-        // Wait, GET /api/hostels is protected. 
-        // I'll assume it's protected and students might not be able to fetch it without a token.
-        // But since this is registration, we should either have a public endpoint, or we can use the existing setup. 
-        // Let's assume there's a public endpoint or we can modify the controller later. 
-        // For this demo, let's just make the request. If it fails, we handle it.
-        setHostels(res.data.hostels || []);
-        if (res.data.hostels?.length > 0) {
+        
+        if (isMounted) {
+          if (res.data.hostels && res.data.hostels.length > 0) {
+            setHostels(res.data.hostels);
+            // Auto-select the first hostel to prevent empty submissions
             setFormData(prev => ({...prev, hostelId: res.data.hostels[0]._id}));
+          } else {
+            setHostelError('No hostels currently available.');
+          }
         }
       } catch (err) {
-        // If it fails due to auth, we might need a public endpoint for hostels list.
-        console.warn("Failed to fetch hostels. Might need a public route.");
+        if (isMounted) {
+          // Handle server unavailable or API failure securely
+          console.error('Hostel fetch error:', err);
+          setHostelError(
+            err.response?.status === 401 
+              ? 'Unauthorized to fetch hostels. Please contact administrator.' 
+              : 'Failed to connect to the server. Please try again later.'
+          );
+          toast.error('Failed to load hostels');
+        }
+      } finally {
+        if (isMounted) {
+          setFetchingHostels(false);
+        }
       }
     };
+
     fetchHostels();
+
+    // Cleanup function
+    return () => { isMounted = false; };
   }, []);
 
+  // Universal change handler for inputs and checkboxes
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    setFormData(prev => ({ ...prev, [e.target.name]: value }));
   };
 
+  // Submission handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    
+    if (!formData.hostelId) {
+      return toast.error('Please select a valid hostel.');
+    }
+
+    setSubmitting(true);
     try {
+      // Sends data to our student controller
       const res = await api.post('/students/register', formData);
       if (res.data.success) {
         toast.success(res.data.message);
+        // Navigate to OTP page, passing the email via URL parameters
         navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
       }
     } catch (error) {
       if (error.response?.data?.errors) {
+        // Validation errors from express-validator
         error.response.data.errors.forEach(err => toast.error(err.msg));
       } else {
+        // Generic server error
         toast.error(error.response?.data?.message || 'Registration failed');
       }
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -71,8 +112,9 @@ export default function StudentRegister() {
     <div className="flex justify-center items-center py-10 min-h-screen bg-gray-50">
       <div className="bg-white p-8 rounded shadow-xl w-full max-w-2xl">
         <h2 className="text-3xl font-bold mb-6 text-center text-blue-600">Student Registration</h2>
+        
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Info */}
+          {/* Basic Info Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold mb-1">Full Name</label>
@@ -92,7 +134,7 @@ export default function StudentRegister() {
             </div>
           </div>
 
-          {/* Academic Info */}
+          {/* Academic Info Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4">
             <div>
               <label className="block text-sm font-bold mb-1">Department</label>
@@ -100,15 +142,15 @@ export default function StudentRegister() {
             </div>
             <div>
               <label className="block text-sm font-bold mb-1">Year</label>
-              <input required type="number" name="year" value={formData.year} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none" />
+              <input required type="number" min="1" max="4" name="year" value={formData.year} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none" />
             </div>
             <div>
               <label className="block text-sm font-bold mb-1">Semester</label>
-              <input required type="number" name="semester" value={formData.semester} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none" />
+              <input required type="number" min="1" max="8" name="semester" value={formData.semester} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none" />
             </div>
           </div>
 
-          {/* Parent Info */}
+          {/* Parent Info Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
             <div>
               <label className="block text-sm font-bold mb-1">Parent Name</label>
@@ -120,32 +162,60 @@ export default function StudentRegister() {
             </div>
           </div>
 
-          {/* Hostel Preferences */}
+          {/* Hostel Allocation Preferences Section */}
           <div className="border-t pt-4 bg-gray-50 p-4 rounded mt-4">
             <h3 className="text-lg font-bold mb-4">Hostel Allocation Preferences</h3>
+            
+            {/* Dynamic Hostel Selection */}
             <div className="mb-4">
               <label className="block text-sm font-bold mb-1">Select Target Hostel</label>
-              <select name="hostelId" value={formData.hostelId} onChange={handleChange} required className="w-full p-2 border rounded focus:ring-2 focus:outline-none bg-white">
-                <option value="">-- Choose Hostel --</option>
-                {hostels.map(h => <option key={h._id} value={h._id}>{h.name} ({h.gender})</option>)}
-                {/* Fallback mock if api fails for public users */}
-                {hostels.length === 0 && <option value="6642d99d1234567890123456">Main Hostel (Mock ID)</option>}
-              </select>
+              
+              {fetchingHostels ? (
+                // Loading spinner UI
+                <div className="flex items-center gap-2 p-2 text-blue-600 bg-blue-50 rounded border border-blue-200">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm font-medium">Fetching available hostels...</span>
+                </div>
+              ) : hostelError ? (
+                // Error handling UI
+                <div className="p-3 text-red-700 bg-red-50 rounded border border-red-200 text-sm font-medium">
+                  {hostelError}
+                </div>
+              ) : (
+                // Success UI with real MongoDB data
+                <select 
+                  name="hostelId" 
+                  value={formData.hostelId} 
+                  onChange={handleChange} 
+                  required 
+                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white transition"
+                >
+                  <option value="" disabled>-- Choose your Hostel --</option>
+                  {hostels.map(h => (
+                    // Using actual MongoDB _id values
+                    <option key={h._id} value={h._id}>
+                      {h.name} ({h.gender})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
-            <div className="flex gap-6 mb-4">
-              <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                <input type="checkbox" name="sameDepartmentPreferred" checked={formData.sameDepartmentPreferred} onChange={handleChange} className="w-4 h-4" />
+
+            <div className="flex gap-6 mb-4 mt-6">
+              <label className="flex items-center gap-2 text-sm font-bold cursor-pointer hover:text-blue-600 transition">
+                <input type="checkbox" name="sameDepartmentPreferred" checked={formData.sameDepartmentPreferred} onChange={handleChange} className="w-4 h-4 accent-blue-600" />
                 Prefer Same Department Roommates
               </label>
-              <label className="flex items-center gap-2 text-sm font-bold cursor-pointer">
-                <input type="checkbox" name="sameBatchPreferred" checked={formData.sameBatchPreferred} onChange={handleChange} className="w-4 h-4" />
+              <label className="flex items-center gap-2 text-sm font-bold cursor-pointer hover:text-blue-600 transition">
+                <input type="checkbox" name="sameBatchPreferred" checked={formData.sameBatchPreferred} onChange={handleChange} className="w-4 h-4 accent-blue-600" />
                 Prefer Same Year/Batch Roommates
               </label>
             </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                <div>
                 <label className="block text-sm font-bold mb-1">Preferred Floor (Optional)</label>
-                <input type="number" name="preferredFloor" value={formData.preferredFloor} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none" />
+                <input type="number" min="1" name="preferredFloor" value={formData.preferredFloor} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none" />
               </div>
               <div>
                 <label className="block text-sm font-bold mb-1">Medical Needs</label>
@@ -154,12 +224,22 @@ export default function StudentRegister() {
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white p-3 rounded-lg font-bold text-lg hover:bg-blue-700 disabled:opacity-50 transition shadow">
-            {loading ? 'Submitting Application...' : 'Apply for Hostel'}
+          {/* Submit Button */}
+          <button 
+            type="submit" 
+            disabled={submitting || fetchingHostels || hostels.length === 0} 
+            className="w-full bg-blue-600 text-white p-3 rounded-lg font-bold text-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md"
+          >
+            {submitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Submitting Application...
+              </span>
+            ) : 'Apply for Hostel'}
           </button>
           
-          <div className="text-center text-sm">
-            Already registered? <Link to="/login" className="text-blue-600 hover:underline">Login here</Link>
+          <div className="text-center text-sm mt-4">
+            Already registered? <Link to="/login" className="text-blue-600 font-bold hover:underline">Login here</Link>
           </div>
         </form>
       </div>

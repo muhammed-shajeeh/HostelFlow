@@ -6,7 +6,10 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 
 const router = express.Router();
 
-// All routes require authentication
+// Public route to allow student registration form to fetch hostels
+router.get('/', getAllHostels);
+
+// All other routes require authentication
 router.use(authMiddleware);
 
 // Only Admin can create, update, delete
@@ -21,7 +24,6 @@ router.post('/',
   createHostel
 );
 
-router.get('/', getAllHostels);
 router.get('/:id', getSingleHostel);
 
 router.put('/:id', 
