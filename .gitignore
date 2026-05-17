@@ -9,3 +9,10 @@ client/node_modules
 server/node_modules
 client/dist
 server/uploads
+.env
+.env.local
+node_modules
+dist
+android/app/google-services.json
+firebase-adminsdk.json
+
