@@ -372,6 +372,19 @@ student.bedNumber = bedNumber;
 
 await student.save();
 
+// Log student approved audit event
+const { logAudit } = require('../utils/auditLogger');
+await logAudit({
+  req,
+  actionType: 'STUDENT_APPROVED',
+  entityType: 'USER',
+  entityId: student._id,
+  title: 'Student Approved',
+  description: `Student ${student.fullName} has been approved and assigned to room ${bestRoom.roomNumber} (bed ${bedNumber}) in hostel ${bestRoom.hostelId?.name || 'assigned hostel'}`,
+  severity: 'IMPORTANT',
+  hostelId: student.hostelId
+});
+
 // Send Email
 const emailHtml = `
   <div style="font-family: Arial; padding:20px;">
@@ -530,6 +543,19 @@ student.approvalStatus = 'REJECTED';
 student.isApproved = false;
 
 await student.save();
+
+// Log student rejected audit event
+const { logAudit } = require('../utils/auditLogger');
+await logAudit({
+  req,
+  actionType: 'STUDENT_REJECTED',
+  entityType: 'USER',
+  entityId: student._id,
+  title: 'Student Rejected',
+  description: `Student application for ${student.fullName} has been rejected`,
+  severity: 'WARNING',
+  hostelId: student.hostelId
+});
 
   // Optimization: Send email asynchronously
   sendEmail({

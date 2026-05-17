@@ -159,6 +159,9 @@ export default function SidebarLayout() {
                 <NavLink to="/admin/billing" icon={Utensils}>Financials</NavLink>
                 <NavLink to="/admin/analytics" icon={BarChart2}>Analytics</NavLink>
                 <NavLink to="/notices/manage" icon={Megaphone}>Notices</NavLink>
+
+                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Governance</div>
+                <NavLink to="/admin/audit-logs" icon={ShieldAlert}>Audit Logs</NavLink>
               </>
             )}
 

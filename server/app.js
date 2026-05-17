@@ -19,6 +19,7 @@ const messRoutes = require('./routes/messRoutes');
 const securityRoutes = require('./routes/securityRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const auditRoutes = require('./routes/auditRoutes');
 
 const app = express();
 
@@ -68,6 +69,7 @@ app.use('/api/mess', messRoutes);
 app.use('/api/security-gate', securityRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/audit-logs', auditRoutes);
 // Error handling middleware
 app.use(errorHandler);
 
@@ -92,6 +94,13 @@ setInterval(async () => {
     console.error('[Auto-Freeze Engine] Error running automatic daily freeze task:', error);
   }
 }, 15 * 60 * 1000); // 15 minutes
+
+// Lightweight notice automation scheduler worker trigger (immediate startup run + 1 minute intervals)
+const { runNoticeScheduler } = require('./utils/noticeScheduler');
+runNoticeScheduler().catch(err => console.error('[Notice Scheduler Startup Error]', err));
+setInterval(async () => {
+  await runNoticeScheduler();
+}, 60 * 1000); // 1 minute
 
 module.exports = app;
 

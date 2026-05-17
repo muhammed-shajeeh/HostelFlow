@@ -17,6 +17,7 @@ import Landing from './pages/Landing';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminHostels from './pages/AdminHostels';
 import AdminWardens from './pages/AdminWardens';
+import AdminAuditLogs from './pages/AdminAuditLogs';
 import WardenDashboard from './pages/WardenDashboard';
 import Rooms from './pages/Rooms';
 import PendingStudents from './pages/PendingStudents';
@@ -96,6 +97,7 @@ function App() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/hostels" element={<AdminHostels />} />
                 <Route path="/admin/wardens" element={<AdminWardens />} />
+                <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
               </Route>
               
               <Route element={<RoleProtectedRoute allowedRoles={['WARDEN', 'ADMIN']} />}>

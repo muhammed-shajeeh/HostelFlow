@@ -31,6 +31,12 @@ const initSocket = (server) => {
         return next(new Error('Authentication failed: User account not found.'));
       }
 
+      // Security terminal accounts are blocked from receiving notifications
+      if (user.role === 'SECURITY') {
+        socket.user = user;
+        return next();
+      }
+
       socket.user = user;
       next();
     } catch (err) {
@@ -41,6 +47,8 @@ const initSocket = (server) => {
   // Live Connections Handler
   io.on('connection', (socket) => {
     const user = socket.user;
+    if (!user) return;
+    
     console.log(`[Socket.IO] Authenticated client connected: ${user.fullName} (${user.role}) [ID: ${socket.id}]`);
 
     // 1. Join Universal User room
@@ -54,14 +62,12 @@ const initSocket = (server) => {
     if (user.role === 'WARDEN' && user.hostelId) {
       socket.join(`HOSTEL_${user.hostelId}`);
       socket.join(`WARDEN_${user._id}`);
-    }
-
-    if (user.role === 'SECURITY' && user.hostelId) {
-      socket.join(`SECURITY_${user.hostelId}`);
+      socket.join(`ROLE_WARDEN`);
     }
 
     if (user.role === 'STUDENT') {
       socket.join(`STUDENT_${user._id}`);
+      socket.join(`ROLE_STUDENT`);
       if (user.hostelId) {
         socket.join(`HOSTEL_${user.hostelId}`);
       }
@@ -69,9 +75,10 @@ const initSocket = (server) => {
 
     if (user.role === 'PARENT') {
       socket.join(`PARENT_${user._id}`);
+      socket.join(`ROLE_PARENT`);
       // Join linked student channels to receive children alerts
-      if (user.students && Array.isArray(user.students)) {
-        user.students.forEach(studentId => {
+      if (user.linkedStudents && Array.isArray(user.linkedStudents)) {
+        user.linkedStudents.forEach(studentId => {
           socket.join(`PARENT_STUDENT_${studentId}`);
         });
       }
@@ -96,22 +103,37 @@ const getIO = () => {
 /**
  * Creates a notification in the database and broadcasts it in real-time to the recipient
  */
-const createAndEmitNotification = async ({ recipientId, title, message, type, actionUrl = '', hostelId = null }) => {
+const createAndEmitNotification = async ({ recipientId, title, message, type, priority = 'NORMAL', relatedEntityId = null, actionUrl = '', hostelId = null }) => {
   try {
+    const recipient = await User.findById(recipientId).select('role hostelId').lean();
+    if (!recipient) {
+      console.warn(`[Socket Manager] Recipient user ${recipientId} not found. Skipping notification.`);
+      return null;
+    }
+
+    // Security roles are entirely blocked from notifications
+    if (recipient.role === 'SECURITY') {
+      return null;
+    }
+
     const notification = await Notification.create({
       recipientId,
+      role: recipient.role,
+      hostelId: hostelId || recipient.hostelId || null,
+      type,
       title,
       message,
-      type,
+      priority,
+      relatedEntityId,
       actionUrl,
-      hostelId
+      isRead: false
     });
 
     if (io) {
       // Direct emit to the user's specific room
       io.to(`USER_${recipientId}`).emit('NEW_NOTIFICATION', notification);
       
-      // Auto-trigger dashboard refresh events
+      // Auto-trigger dashboard refresh events so pages sync live!
       io.to(`USER_${recipientId}`).emit('REFRESH_DASHBOARD', { type });
     }
 

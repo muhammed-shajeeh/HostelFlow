@@ -423,6 +423,20 @@ const verifyResetOtp = async (req, res, next) => {
       user.resetOtpLockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 mins lock
       user.resetOtpAttempts = 0; // reset count for later
       await user.save();
+
+      // Log the security lockout audit event
+      const { logAudit } = require('../utils/auditLogger');
+      await logAudit({
+        actor: user,
+        actionType: 'OTP_ABUSE_LOCKOUT',
+        entityType: 'SECURITY',
+        entityId: user._id,
+        title: 'OTP Abuse Lockout',
+        description: `Password recovery locked for 15 minutes for user ${user.fullName} (${user.role}) due to repeated verification failures.`,
+        severity: 'CRITICAL',
+        hostelId: user.hostelId
+      });
+
       return res.status(429).json({ success: false, message: 'Too many wrong attempts. Password recovery has been locked for 15 minutes.' });
     }
 

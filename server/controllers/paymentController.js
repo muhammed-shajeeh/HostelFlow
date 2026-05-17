@@ -218,6 +218,19 @@ const verifyPayment = async (req, res, next) => {
       ipAddress: req.ip || req.headers['x-forwarded-for']
     }).save();
 
+    // Centrally log the operational audit timeline event
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'PAYMENT_VERIFIED',
+      entityType: 'PAYMENT',
+      entityId: payment._id,
+      title: 'Payment Verified',
+      description: `Payment of ₹${payment.amount.toFixed(2)} verified successfully for invoice #${invoice?.invoiceCode || invoice?._id}`,
+      severity: 'IMPORTANT',
+      hostelId: payment.hostelId
+    });
+
     // Trigger Real-Time Notification Alerts
     await createAndEmitNotification({
       recipientId: payment.studentId,
@@ -325,6 +338,19 @@ const issueRefund = async (req, res, next) => {
       reason: reason,
       ipAddress: req.ip || req.headers['x-forwarded-for']
     }).save();
+
+    // Centrally log the operational audit timeline event
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'REFUND_ISSUED',
+      entityType: 'PAYMENT',
+      entityId: refundPayment._id,
+      title: 'Refund Issued',
+      description: `Manual cashier refund of ₹${refVal.toFixed(2)} processed for invoice #${invoice?.invoiceCode || invoice?._id}. Reason: ${reason}`,
+      severity: 'WARNING',
+      hostelId: invoice.hostelId
+    });
 
     res.status(200).json({
       success: true,
@@ -519,6 +545,18 @@ const handleWebhook = async (req, res, next) => {
           reason: `Asynchronous reconciliation verified for Order: ${orderId}.`,
           newValue: { transactionId: paymentId, status: 'SUCCESS' }
         }).save();
+
+        // Centrally log the operational audit timeline event
+        const { logAudit } = require('../utils/auditLogger');
+        await logAudit({
+          actionType: 'PAYMENT_VERIFIED',
+          entityType: 'PAYMENT',
+          entityId: payment._id,
+          title: 'Payment Reconciled (Webhook)',
+          description: `Asynchronous payment capture of ₹${payment.amount.toFixed(2)} verified successfully for order ${orderId}`,
+          severity: 'IMPORTANT',
+          hostelId: payment.hostelId
+        });
 
         // Trigger Real-Time webhook notification reconciled events
         await createAndEmitNotification({

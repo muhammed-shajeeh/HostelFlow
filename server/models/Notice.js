@@ -76,10 +76,64 @@ const noticeSchema = new mongoose.Schema(
       default: null
     },
 
-    // Role-based filtering: ALL (every authenticated user), STUDENTS, WARDENS
+    // Date/time at which the notice should be active and published
+    publishAt: {
+      type: Date,
+      default: Date.now
+    },
+
+    // publishing state
+    isPublished: {
+      type: Boolean,
+      default: true
+    },
+
+    // User who published this notice
+    publishedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+
+    // creator role snapshot
+    creatorRole: {
+      type: String,
+      enum: ['ADMIN', 'WARDEN']
+    },
+
+    // target audience role
+    audienceScope: {
+      type: String,
+      enum: ['ALL', 'STUDENTS', 'PARENTS', 'WARDENS'],
+      default: 'ALL'
+    },
+
+    // recurrence options for automatic reminders
+    recurrenceType: {
+      type: String,
+      enum: ['NONE', 'DAILY', 'WEEKLY', 'MONTHLY'],
+      default: 'NONE'
+    },
+
+    isRecurring: {
+      type: Boolean,
+      default: false
+    },
+
+    parentRecurringId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Notice',
+      default: null
+    },
+
+    hasGeneratedNext: {
+      type: Boolean,
+      default: false
+    },
+
+    // Role-based filtering: ALL (every authenticated user), STUDENTS, WARDENS, PARENTS
     visibleTo: {
       type: String,
-      enum: ['ALL', 'STUDENTS', 'WARDENS'],
+      enum: ['ALL', 'STUDENTS', 'WARDENS', 'PARENTS'],
       default: 'ALL'
     },
 

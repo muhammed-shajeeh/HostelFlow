@@ -6,13 +6,14 @@ const NotificationSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  title: {
+  role: {
     type: String,
+    enum: ['ADMIN', 'WARDEN', 'STUDENT', 'PARENT'],
     required: true
   },
-  message: {
-    type: String,
-    required: true
+  hostelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hostel'
   },
   type: {
     type: String,
@@ -22,6 +23,14 @@ const NotificationSchema = new mongoose.Schema({
       'LEAVE_REQUESTED',
       'NEW_COMPLAINT',
       'COMPLAINT_RESOLVED',
+      'PAYMENT_SUCCESS',
+      'PAYMENT_OVERDUE',
+      'NOTICE_POSTED',
+      'ATTENDANCE_WARNING',
+      'LOW_ATTENDANCE',
+      'BILL_GENERATED',
+      'ROOM_TRANSFER',
+      'SYSTEM_ALERT',
       'EMERGENCY_NOTICE',
       'NEW_NOTICE',
       'PAYMENT_SUCCESSFUL',
@@ -33,20 +42,35 @@ const NotificationSchema = new mongoose.Schema({
     ],
     required: true
   },
-  isRead: {
-    type: Boolean,
-    default: false
+  title: {
+    type: String,
+    required: true
+  },
+  message: {
+    type: String,
+    required: true
+  },
+  priority: {
+    type: String,
+    enum: ['NORMAL', 'IMPORTANT', 'EMERGENCY'],
+    default: 'NORMAL'
+  },
+  relatedEntityId: {
+    type: mongoose.Schema.Types.ObjectId
   },
   actionUrl: {
     type: String,
     default: ''
   },
-  hostelId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Hostel'
+  isRead: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
 });
+
+// Optimize query speeds with compound indexes for fetching unread lists quickly
+NotificationSchema.index({ recipientId: 1, isRead: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Notification', NotificationSchema);

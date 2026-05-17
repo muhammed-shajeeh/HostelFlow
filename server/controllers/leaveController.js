@@ -153,6 +153,19 @@ const approveLeave = async (req, res, next) => {
 
     await leave.save();
 
+    // Centrally log the operational audit timeline event
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'LEAVE_APPROVED',
+      entityType: 'LEAVE',
+      entityId: leave._id,
+      title: 'Leave Request Approved',
+      description: `Approved leave request for student ${leave.studentId.fullName}. Departure: ${new Date(leave.departureDate).toDateString()}`,
+      severity: 'INFO',
+      hostelId: leave.hostelId
+    });
+
     // Notify student about leave approval
     await createAndEmitNotification({
       recipientId: leave.studentId._id,
@@ -214,6 +227,19 @@ const rejectLeave = async (req, res, next) => {
     leave.status = 'REJECTED';
     leave.rejectionReason = rejectionReason;
     await leave.save();
+
+    // Centrally log the operational audit timeline event
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'LEAVE_REJECTED',
+      entityType: 'LEAVE',
+      entityId: leave._id,
+      title: 'Leave Request Rejected',
+      description: `Rejected leave request for student ${leave.studentId.fullName}. Reason: ${rejectionReason}`,
+      severity: 'INFO',
+      hostelId: leave.hostelId
+    });
 
     // Notify student about leave rejection
     await createAndEmitNotification({

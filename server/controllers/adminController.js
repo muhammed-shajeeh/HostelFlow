@@ -55,6 +55,18 @@ const createWarden = async (req, res, next) => {
     hostel.warden = warden._id;
     await hostel.save();
 
+    // Centrally log the warden creation event
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'WARDEN_CREATED',
+      entityType: 'USER',
+      entityId: warden._id,
+      title: 'Warden Created',
+      description: `Warden account created for ${fullName} and assigned to hostel ${hostel.name}`,
+      severity: 'IMPORTANT'
+    });
+
     // Send Email with credentials
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; padding: 20px;">

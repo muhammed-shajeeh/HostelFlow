@@ -3,46 +3,42 @@ const User = require('../models/User');
 const { createAndEmitNotification, emitToRoom, getIO } = require('../utils/socket');
 
 // ======================================================
-// NOTICE CONTROLLER
-// ======================================================
-// Handles all notice CRUD and visibility logic.
-//
-// Security model:
-//   ADMIN   → create GLOBAL or HOSTEL notices; full CRUD on all notices
-//   WARDEN  → create/update/delete ONLY within their assigned hostel; cannot create GLOBAL
-//   STUDENT → read only; sees hostel notices + applicable global notices
-//
-// Notice is excluded from queries when:
-//   - isActive === false (soft-deleted or archived)
-//   - expiresAt is set and is in the past
+// NOTICE / ANNOUNCEMENT CONTROLLER
 // ======================================================
 
 // ──────────────────────────────────────────────────────
-// Shared helper: build the base "visible to me" query
-// Used by both GET /notices and GET /notices/:id
+// Helper: build notice visibility query for public noticeboard
 // ──────────────────────────────────────────────────────
 const buildVisibilityQuery = (user) => {
   const now = new Date();
 
-  // Base conditions: active, not expired
+  // Base conditions: active, published, and not expired
   const query = {
     isActive: true,
+    isPublished: true,
+    publishAt: { $lte: now },
     $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }]
   };
 
-  // ── Role visibility filter ─────────────────────────
-  // visibleTo: ALL = everyone sees it
-  //            STUDENTS = only students
-  //            WARDENS = only wardens/admins
+  // Role visibility filter (supporting visibleTo and new audienceScope)
   if (user.role === 'STUDENT') {
-    query.visibleTo = { $in: ['ALL', 'STUDENTS'] };
+    query.$or = [
+      { visibleTo: { $in: ['ALL', 'STUDENTS'] } },
+      { audienceScope: { $in: ['ALL', 'STUDENTS'] } }
+    ];
   } else if (user.role === 'WARDEN') {
-    query.visibleTo = { $in: ['ALL', 'WARDENS'] };
+    query.$or = [
+      { visibleTo: { $in: ['ALL', 'WARDENS'] } },
+      { audienceScope: { $in: ['ALL', 'WARDENS'] } }
+    ];
+  } else if (user.role === 'PARENT') {
+    query.$or = [
+      { visibleTo: { $in: ['ALL', 'PARENTS'] } },
+      { audienceScope: { $in: ['ALL', 'PARENTS'] } }
+    ];
   }
-  // ADMIN sees everything regardless of visibleTo
 
-  // ── Hostel isolation scoping ───────────────────────
-  // A user sees: GLOBAL notices + HOSTEL notices for their hostel
+  // Hostel isolation scoping
   if (user.role !== 'ADMIN') {
     const hostelId = user.hostelId?._id || user.hostelId;
     query.$and = [
@@ -54,28 +50,103 @@ const buildVisibilityQuery = (user) => {
       }
     ];
   }
-  // Admins skip hostel scoping — they see all notices
 
   return query;
 };
 
+// Helper: dispatch notifications for published notices
+const dispatchNoticeNotifications = async (notice) => {
+  try {
+    const targetType = notice.targetType;
+    const resolvedHostelId = notice.hostelId;
+    const audienceScope = notice.audienceScope || 'ALL';
+
+    // Build target user audience query
+    const userQuery = {};
+    if (targetType === 'HOSTEL' && resolvedHostelId) {
+      userQuery.hostelId = resolvedHostelId;
+    }
+
+    if (audienceScope === 'STUDENTS') {
+      userQuery.role = 'STUDENT';
+    } else if (audienceScope === 'PARENTS') {
+      userQuery.role = 'PARENT';
+    } else if (audienceScope === 'WARDENS') {
+      userQuery.role = 'WARDEN';
+    } else {
+      userQuery.role = { $in: ['STUDENT', 'PARENT', 'WARDEN'] };
+    }
+
+    const targetedUsers = await User.find(userQuery).select('_id').lean();
+    
+    const isEmergency = notice.priority === 'EMERGENCY';
+    const notificationTitle = isEmergency 
+      ? '🚨 URGENT EMERGENCY NOTICE' 
+      : notice.priority === 'IMPORTANT' 
+        ? '⚠️ IMPORTANT ANNOUNCEMENT' 
+        : '📋 New Announcement';
+
+    const notificationType = isEmergency 
+      ? 'EMERGENCY_NOTICE' 
+      : 'NEW_ANNOUNCEMENT';
+
+    for (const targetUser of targetedUsers) {
+      await createAndEmitNotification({
+        recipientId: targetUser._id,
+        title: notificationTitle,
+        message: `Notice: "${notice.title}". Click to view details.`,
+        type: notificationType,
+        priority: notice.priority,
+        relatedEntityId: notice._id,
+        actionUrl: '/notices',
+        hostelId: targetType === 'GLOBAL' ? null : resolvedHostelId
+      });
+    }
+
+    // Broadcast Socket triggers
+    const io = getIO();
+    if (targetType === 'GLOBAL') {
+      io.emit('NEW_NOTICE', notice);
+      io.emit('REFRESH_DASHBOARD', { type: 'NEW_NOTICE' });
+    } else {
+      io.to(`HOSTEL_${resolvedHostelId}`).emit('NEW_NOTICE', notice);
+      io.to(`HOSTEL_${resolvedHostelId}`).emit('REFRESH_DASHBOARD', { type: 'NEW_NOTICE' });
+    }
+  } catch (err) {
+    console.error('[Notice Controller] Failed to dispatch notifications', err);
+  }
+};
+
 // ──────────────────────────────────────────────────────
 // GET /api/notices
-// All authenticated users — visibility-filtered results
 // ──────────────────────────────────────────────────────
 const getNotices = async (req, res, next) => {
   try {
-    const query = buildVisibilityQuery(req.user);
+    const { mode } = req.query;
+    let query = {};
 
-    // Sort: pinned first, then EMERGENCY > IMPORTANT > NORMAL, then newest
+    // Management view filters (Admins / Wardens moderating notices)
+    if (mode === 'manage' && (req.user.role === 'ADMIN' || req.user.role === 'WARDEN')) {
+      query.isActive = true;
+      
+      if (req.user.role === 'WARDEN') {
+        const wardenHostel = req.user.hostelId?._id || req.user.hostelId;
+        query.targetType = 'HOSTEL';
+        query.hostelId = wardenHostel;
+      }
+    } else {
+      // Standard public noticeboard view
+      query = buildVisibilityQuery(req.user);
+    }
+
+    // Retrieve and populate
     const notices = await Notice.find(query)
       .populate('createdBy', 'fullName role')
       .populate('hostelId', 'name hostelCode')
       .sort({ isPinned: -1, priority: 1, createdAt: -1 })
       .lean();
 
-    // Re-sort priority correctly (mongoose sorts strings alphabetically,
-    // so we enforce EMERGENCY > IMPORTANT > NORMAL manually)
+    // Custom order sort helper (EMERGENCY > IMPORTANT > NORMAL)
     const priorityOrder = { EMERGENCY: 0, IMPORTANT: 1, NORMAL: 2 };
     notices.sort((a, b) => {
       if (b.isPinned !== a.isPinned) return b.isPinned - a.isPinned;
@@ -94,7 +165,6 @@ const getNotices = async (req, res, next) => {
 
 // ──────────────────────────────────────────────────────
 // GET /api/notices/:id
-// Single notice — enforces same visibility rules
 // ──────────────────────────────────────────────────────
 const getNoticeById = async (req, res, next) => {
   try {
@@ -107,12 +177,24 @@ const getNoticeById = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Notice not found.' });
     }
 
-    // Hostel isolation check for non-admins
-    if (notice.targetType === 'HOSTEL' && req.user.role !== 'ADMIN') {
-      const userHostel = (req.user.hostelId?._id || req.user.hostelId)?.toString();
-      const noticeHostel = notice.hostelId?._id?.toString() || notice.hostelId?.toString();
-      if (userHostel !== noticeHostel) {
-        return res.status(403).json({ success: false, message: 'Access denied.' });
+    // Role-based visibility fence checks
+    if (req.user.role !== 'ADMIN') {
+      const now = new Date();
+      // Enforce scheduled/expired boundaries for students/parents
+      if (!notice.isPublished || (notice.publishAt && new Date(notice.publishAt) > now)) {
+        return res.status(403).json({ success: false, message: 'Access denied: Notice is scheduled for future publishing.' });
+      }
+      if (notice.expiresAt && new Date(notice.expiresAt) <= now) {
+        return res.status(403).json({ success: false, message: 'Access denied: Notice has expired.' });
+      }
+
+      // Hostel isolation fence checks
+      if (notice.targetType === 'HOSTEL') {
+        const userHostel = (req.user.hostelId?._id || req.user.hostelId)?.toString();
+        const noticeHostel = notice.hostelId?._id?.toString() || notice.hostelId?.toString();
+        if (userHostel !== noticeHostel) {
+          return res.status(403).json({ success: false, message: 'Access denied: Notices are isolated by hostel residency.' });
+        }
       }
     }
 
@@ -124,83 +206,85 @@ const getNoticeById = async (req, res, next) => {
 
 // ──────────────────────────────────────────────────────
 // POST /api/notices
-// Admin: can create GLOBAL or HOSTEL notices
-// Warden: can ONLY create HOSTEL notices for their hostel
 // ──────────────────────────────────────────────────────
 const createNotice = async (req, res, next) => {
   try {
-    const { title, content, targetType, hostelId, priority, isPinned, expiresAt, visibleTo } = req.body;
+    const { 
+      title, 
+      content, 
+      targetType, 
+      hostelId, 
+      priority, 
+      isPinned, 
+      expiresAt, 
+      visibleTo,
+      publishAt,
+      recurrenceType,
+      audienceScope
+    } = req.body;
+
+    const userRole = req.user.role;
 
     // Wardens cannot create GLOBAL broadcasts
-    if (req.user.role === 'WARDEN' && targetType === 'GLOBAL') {
+    if (userRole === 'WARDEN' && targetType === 'GLOBAL') {
       return res.status(403).json({
         success: false,
-        message: 'Wardens can only create hostel-specific notices, not global broadcasts.'
+        message: 'Forbidden: Wardens can only create notices for their assigned hostel.'
       });
     }
 
-    // Determine the hostelId to use
-    // Wardens always use their own hostelId, regardless of what was sent in body
+    // Determine target hostelId
     let resolvedHostelId = hostelId || null;
-    if (req.user.role === 'WARDEN') {
+    if (userRole === 'WARDEN') {
       resolvedHostelId = req.user.hostelId?._id || req.user.hostelId;
     }
 
-    // Hostel notices MUST have a hostelId
     if (targetType === 'HOSTEL' && !resolvedHostelId) {
       return res.status(400).json({
         success: false,
-        message: 'A hostelId is required for hostel-targeted notices.'
+        message: 'A hostel selection is required for hostel-targeted announcements.'
       });
     }
+
+    // Schedule details
+    const parsedPublishAt = publishAt ? new Date(publishAt) : new Date();
+    const isFutureScheduled = parsedPublishAt > new Date();
+    const isPublished = !isFutureScheduled;
+
+    const noticeRecurrence = recurrenceType || 'NONE';
+    const isRecurring = noticeRecurrence !== 'NONE';
+
+    const resolvedAudience = audienceScope || visibleTo || 'ALL';
 
     const notice = await Notice.create({
       title,
       content,
       createdBy: req.user._id,
+      publishedBy: req.user._id,
+      creatorRole: userRole,
       targetType: targetType || 'HOSTEL',
       hostelId: targetType === 'GLOBAL' ? null : resolvedHostelId,
       priority: priority || 'NORMAL',
       isPinned: isPinned || false,
-      expiresAt: expiresAt || null,
-      visibleTo: visibleTo || 'ALL'
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      publishAt: parsedPublishAt,
+      isPublished,
+      recurrenceType: noticeRecurrence,
+      isRecurring,
+      audienceScope: resolvedAudience,
+      visibleTo: resolvedAudience
     });
 
-    // Real-Time broadcasts & Database Alerts for Emergency Notices
-    if (priority === 'EMERGENCY') {
-      const studentQuery = { role: 'STUDENT' };
-      if (targetType === 'HOSTEL') studentQuery.hostelId = resolvedHostelId;
-      
-      const students = await User.find(studentQuery).select('_id').lean();
-      for (const student of students) {
-        await createAndEmitNotification({
-          recipientId: student._id,
-          title: '🚨 URGENT EMERGENCY NOTICE',
-          message: `Urgent Alert: "${title}". Please read immediately!`,
-          type: 'EMERGENCY_NOTICE',
-          actionUrl: '/notices',
-          hostelId: targetType === 'GLOBAL' ? null : resolvedHostelId
-        });
-      }
-    }
-
-    // Broadcast Notice Event
-    try {
-      const io = getIO();
-      if (targetType === 'GLOBAL') {
-        io.emit('NEW_NOTICE', notice);
-        io.emit('REFRESH_DASHBOARD', { type: 'NEW_NOTICE' });
-      } else {
-        io.to(`HOSTEL_${resolvedHostelId}`).emit('NEW_NOTICE', notice);
-        io.to(`HOSTEL_${resolvedHostelId}`).emit('REFRESH_DASHBOARD', { type: 'NEW_NOTICE' });
-      }
-    } catch (err) {
-      console.error('Socket notification broadcast failed:', err);
+    // If active immediately, dispatch notifications & live alerts
+    if (isPublished) {
+      await dispatchNoticeNotifications(notice);
     }
 
     res.status(201).json({
       success: true,
-      message: 'Notice published successfully.',
+      message: isFutureScheduled 
+        ? `Notice scheduled successfully for ${parsedPublishAt.toLocaleString()}`
+        : 'Notice published successfully.',
       notice
     });
   } catch (error) {
@@ -210,8 +294,6 @@ const createNotice = async (req, res, next) => {
 
 // ──────────────────────────────────────────────────────
 // PUT /api/notices/:id
-// Admin: can update any notice
-// Warden: can only update notices from their hostel
 // ──────────────────────────────────────────────────────
 const updateNotice = async (req, res, next) => {
   try {
@@ -220,27 +302,70 @@ const updateNotice = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Notice not found.' });
     }
 
-    // Warden can only update their own hostel's notices
+    // STRICT WARDEN SECURITY GATE
     if (req.user.role === 'WARDEN') {
-      const wardenHostel = (req.user.hostelId?._id || req.user.hostelId)?.toString();
-      const noticeHostel = notice.hostelId?.toString();
-      if (wardenHostel !== noticeHostel) {
-        return res.status(403).json({ success: false, message: 'Access denied. Not your hostel notice.' });
+      if (notice.createdBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Wardens can only edit notices they created.'
+        });
       }
     }
 
-    const { title, content, priority, isPinned, expiresAt, visibleTo } = req.body;
+    const { 
+      title, 
+      content, 
+      priority, 
+      isPinned, 
+      expiresAt, 
+      visibleTo,
+      publishAt,
+      recurrenceType,
+      audienceScope
+    } = req.body;
 
+    // Track original states
+    const wasPublished = notice.isPublished;
+
+    // Apply edits
     if (title) notice.title = title;
     if (content) notice.content = content;
     if (priority) notice.priority = priority;
     if (isPinned !== undefined) notice.isPinned = isPinned;
-    if (expiresAt !== undefined) notice.expiresAt = expiresAt;
-    if (visibleTo) notice.visibleTo = visibleTo;
+    
+    if (expiresAt !== undefined) {
+      notice.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    }
+
+    if (publishAt !== undefined) {
+      notice.publishAt = publishAt ? new Date(publishAt) : new Date();
+      // Re-evaluate published status
+      notice.isPublished = new Date(notice.publishAt) <= new Date();
+    }
+
+    if (recurrenceType !== undefined) {
+      notice.recurrenceType = recurrenceType;
+      notice.isRecurring = recurrenceType !== 'NONE';
+    }
+
+    if (audienceScope || visibleTo) {
+      const resolvedAudience = audienceScope || visibleTo;
+      notice.audienceScope = resolvedAudience;
+      notice.visibleTo = resolvedAudience;
+    }
 
     await notice.save();
 
-    res.status(200).json({ success: true, message: 'Notice updated.', notice });
+    // If edited to become published now (and wasn't previously published)
+    if (notice.isPublished && !wasPublished) {
+      await dispatchNoticeNotifications(notice);
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Notice updated successfully.', 
+      notice 
+    });
   } catch (error) {
     next(error);
   }
@@ -248,7 +373,6 @@ const updateNotice = async (req, res, next) => {
 
 // ──────────────────────────────────────────────────────
 // DELETE /api/notices/:id
-// Soft-delete: sets isActive = false (preserves records)
 // ──────────────────────────────────────────────────────
 const deleteNotice = async (req, res, next) => {
   try {
@@ -257,15 +381,17 @@ const deleteNotice = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Notice not found.' });
     }
 
-    // Warden hostel isolation check
+    // STRICT WARDEN SECURITY GATE
     if (req.user.role === 'WARDEN') {
-      const wardenHostel = (req.user.hostelId?._id || req.user.hostelId)?.toString();
-      if (notice.hostelId?.toString() !== wardenHostel) {
-        return res.status(403).json({ success: false, message: 'Access denied.' });
+      if (notice.createdBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Wardens can only delete notices they created.'
+        });
       }
     }
 
-    // Soft-delete: mark inactive instead of permanent removal
+    // Soft-delete: mark inactive
     notice.isActive = false;
     await notice.save();
 
@@ -277,11 +403,9 @@ const deleteNotice = async (req, res, next) => {
 
 // ──────────────────────────────────────────────────────
 // GET /api/notices/stats
-// For dashboard widgets — returns summary counts
 // ──────────────────────────────────────────────────────
 const getNoticeStats = async (req, res, next) => {
   try {
-    const now = new Date();
     const baseQuery = buildVisibilityQuery(req.user);
 
     const [total, emergency, pinned] = await Promise.all([
@@ -290,7 +414,7 @@ const getNoticeStats = async (req, res, next) => {
       Notice.countDocuments({ ...baseQuery, isPinned: true })
     ]);
 
-    // Fetch 3 latest for dashboard widget preview
+    // Fetch 3 latest active notices for widget preview
     const latest = await Notice.find(baseQuery)
       .sort({ isPinned: -1, createdAt: -1 })
       .limit(3)
