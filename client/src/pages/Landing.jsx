@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { Capacitor } from '@capacitor/core';
 import { 
   ShieldCheck, 
   GraduationCap, 
@@ -72,6 +73,21 @@ export default function Landing() {
 
   // Authentication Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [customIp, setCustomIp] = useState(localStorage.getItem('custom_api_ip') || '');
+  const [showIpConfig, setShowIpConfig] = useState(false);
+
+  const handleSaveIp = () => {
+    if (customIp.trim()) {
+      localStorage.setItem('custom_api_ip', customIp.trim());
+      toast.success('API Server Host IP Updated!');
+    } else {
+      localStorage.removeItem('custom_api_ip');
+      toast.success('Reset to default API configurations');
+    }
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
   const [authTab, setAuthTab] = useState('login'); // 'login' or 'signup'
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -254,6 +270,197 @@ export default function Landing() {
     { label: 'Parents', icon: Users, radius: 170, angle: 257.1, color: 'text-rose-500 bg-rose-50 border-rose-150' },
     { label: 'Students', icon: GraduationCap, radius: 170, angle: 308.6, color: 'text-slate-800 bg-slate-100 border-slate-200' },
   ];
+
+  const isNative = Capacitor.isNativePlatform();
+
+  if (isNative) {
+    return (
+      <div className="min-h-screen bg-[#090d16] text-[#f0f6fc] font-sans flex flex-col justify-between p-6 relative overflow-hidden safe-top-padding">
+        {/* Ambient background glow */}
+        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
+
+        {/* Top Header/Toggle */}
+        <div className="flex justify-between items-center z-10 w-full">
+          <div className="flex items-center gap-2">
+            <HostelFlowLogo className="w-8 h-8 text-blue-500" />
+            <span className="font-extrabold text-lg tracking-tight">HostelFlow</span>
+          </div>
+          <button
+            onClick={() => toggleTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2.5 bg-[#161b22] hover:bg-[#30363d] border border-[#30363d] rounded-xl text-gray-400 transition"
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+        </div>
+
+        {/* Center Section: App Branding & Hero Onboarding */}
+        <div className="flex-1 flex flex-col justify-center items-center text-center max-w-sm mx-auto space-y-8 z-10 py-10">
+          <div className="w-20 h-20 bg-[#161b22] border border-[#30363d] rounded-3xl flex items-center justify-center shadow-2xl animate-pulse">
+            <HostelFlowLogo className="w-12 h-12 text-blue-500" />
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-extrabold tracking-tight">HostelFlow</h1>
+            <p className="text-xs text-gray-400 leading-relaxed font-semibold">
+              Secure institutional hostel portal for leave tracking, outpass codes, mess billing, and real-time alerts.
+            </p>
+          </div>
+
+          <div className="w-full space-y-3.5 pt-4">
+            {user ? (
+              <Link
+                to={getDashboardRoute()}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/15 text-xs"
+              >
+                Go to Dashboard <ArrowRight size={14} />
+              </Link>
+            ) : (
+              <>
+                <button
+                  onClick={() => { setAuthTab('login'); setIsAuthModalOpen(true); }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/15 text-xs cursor-pointer"
+                >
+                  Sign In to Account
+                </button>
+                <Link
+                  to="/register"
+                  className="w-full bg-[#161b22] hover:bg-[#30363d] border border-[#30363d] text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-xs"
+                >
+                  Onboard Resident Student
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Section: API Configurer & Footer */}
+        <div className="z-10 w-full max-w-sm mx-auto space-y-4">
+          <div className="border-t border-[#30363d] pt-4 text-center">
+            <button
+              onClick={() => setShowIpConfig(!showIpConfig)}
+              className="text-[10px] text-gray-500 hover:text-blue-450 font-bold flex items-center justify-center gap-1.5 mx-auto transition cursor-pointer"
+            >
+              ⚙️ Configure API Server Host
+            </button>
+          </div>
+
+          {showIpConfig && (
+            <div className="bg-[#161b22] border border-[#30363d] p-3.5 rounded-xl space-y-2.5 animate-fadeIn text-left">
+              <label className="block text-[8px] uppercase tracking-wider text-gray-500 font-black">
+                Local Server IP / Host (WiFi Testing)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customIp}
+                  onChange={(e) => setCustomIp(e.target.value)}
+                  placeholder="e.g. 192.168.1.15"
+                  className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-bold"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveIp}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition cursor-pointer"
+                >
+                  Save
+                </button>
+              </div>
+              <p className="text-[8px] text-gray-500 leading-normal font-semibold">
+                Allows connecting to your local server over standard hotspot/WiFi. Leave blank to use default hosts.
+              </p>
+            </div>
+          )}
+
+          <div className="text-center text-[9px] text-gray-600 font-semibold pb-2">
+            &copy; 2026 HostelFlow. Hardened App Build.
+          </div>
+        </div>
+
+        {/* Modal Injector */}
+        {isAuthModalOpen && (
+          <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-[#161b22] border border-[#30363d] text-[#f0f6fc] rounded-2xl max-w-sm w-full p-6 space-y-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setIsAuthModalOpen(false)}
+                className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-white hover:bg-[#30363d] rounded-lg transition cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="text-center space-y-2 pt-1">
+                <HostelFlowLogo className="w-12 h-12 text-blue-500 mx-auto" />
+                <span className="block font-extrabold text-lg tracking-tight mt-2">HostelFlow</span>
+                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 pt-1">
+                  {authTab === 'login' ? 'Sign In' : 'Sign Up'}
+                </h3>
+              </div>
+
+              {authTab === 'login' ? (
+                <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs font-bold text-gray-405 text-left">
+                  <div>
+                    <label className="block text-[8px] uppercase tracking-wider text-gray-500 mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      placeholder="resident@hostelflow.app"
+                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition placeholder:text-gray-600 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[8px] uppercase tracking-wider text-gray-500 mb-1">Password</label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition placeholder:text-gray-600 font-semibold"
+                    />
+                    <div className="flex justify-end mt-2">
+                      <button
+                        type="button"
+                        onClick={handleStartRecovery}
+                        className="text-blue-455 hover:underline text-[9px] font-bold cursor-pointer bg-transparent border-0 p-0"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/10 cursor-pointer text-xs"
+                  >
+                    {loading ? 'Authenticating...' : 'Sign In'}
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-3 pt-1 text-xs text-left">
+                  <Link
+                    to="/register"
+                    onClick={() => setIsAuthModalOpen(false)}
+                    className="flex items-center justify-between p-4 bg-[#0d1117] border border-[#30363d] rounded-xl hover:border-blue-500 transition group text-left cursor-pointer"
+                  >
+                    <div>
+                      <h4 className="font-extrabold text-white">Student Resident Signup</h4>
+                      <p className="text-[9px] text-gray-500 font-semibold mt-0.5">Submit your onboarding applications live</p>
+                    </div>
+                    <ArrowRight size={14} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between overflow-x-hidden">

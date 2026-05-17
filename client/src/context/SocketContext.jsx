@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 import toast from 'react-hot-toast';
 import api from '../api';
-import { getBaseURL } from '../utils/config';
+import { Capacitor } from '@capacitor/core';
 
 const SocketContext = createContext();
 
@@ -49,8 +49,15 @@ export const SocketProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    // Connect to backend Socket.IO server dynamically
-    const socketUrl = getBaseURL();
+    // Connect to backend Socket.IO server
+    const getSocketUrl = () => {
+      if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+      const savedIp = localStorage.getItem('custom_api_ip');
+      if (savedIp) return `http://${savedIp}:5000`;
+      if (Capacitor.isNativePlatform()) return 'http://10.0.2.2:5000';
+      return 'http://localhost:5000';
+    };
+    const socketUrl = getSocketUrl();
     const newSocket = io(socketUrl, {
       auth: { token },
       reconnectionAttempts: 5,

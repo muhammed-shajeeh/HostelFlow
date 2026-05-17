@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -71,6 +74,35 @@ import SecurityGateDashboard from './pages/SecurityGateDashboard';
 import NotFound from './pages/NotFound';
 
 function App() {
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      const updateStatusBar = async () => {
+        try {
+          const isDark = document.documentElement.classList.contains('dark');
+          await StatusBar.setStyle({
+            style: isDark ? Style.Dark : Style.Light
+          });
+          await StatusBar.setBackgroundColor({
+            color: isDark ? '#090d16' : '#ffffff'
+          });
+        } catch (err) {
+          console.warn('[StatusBar] Failed to style status bar:', err);
+        }
+      };
+
+      updateStatusBar();
+
+      // Listen for theme mutations
+      const observer = new MutationObserver(() => updateStatusBar());
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+
+      return () => observer.disconnect();
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <AuthProvider>

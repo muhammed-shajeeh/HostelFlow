@@ -143,7 +143,7 @@ export default function SidebarLayout() {
         }`}
       >
         {/* Header Branding */}
-        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between font-black text-md tracking-wider uppercase bg-slate-50 dark:bg-zinc-950/40 text-blue-600 dark:text-blue-400">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between font-black text-md tracking-wider uppercase bg-slate-50 dark:bg-zinc-950/40 text-blue-600 dark:text-blue-400 safe-top-padding">
           <span className="flex items-center gap-2">
             <ShieldAlert size={20} className="text-blue-500 animate-pulse" />
             HostelFlow ERP
@@ -351,7 +351,7 @@ export default function SidebarLayout() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
         {/* Responsive Top Header */}
-        <header className="bg-white dark:bg-zinc-900 shadow-xs border-b border-slate-200 dark:border-zinc-800 px-4 md:px-6 py-4 flex justify-between items-center z-10">
+        <header className="bg-white dark:bg-zinc-900 shadow-xs border-b border-slate-200 dark:border-zinc-800 px-4 md:px-6 py-4 flex justify-between items-center z-10 safe-top-padding">
           <div className="flex items-center gap-3">
             {/* Hamburger menu button for mobile */}
             <button 

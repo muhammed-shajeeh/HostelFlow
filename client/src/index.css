@@ -211,14 +211,9 @@
   background: #484f58;
 }
 
-/* ==========================================================================
-   MOBILE NATIVE ANDROID/IOS SAFE AREA INTEGRATIONS
-   ========================================================================== */
-header {
-  padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+/* Capacitor Safe-Area Top Spacing Rules for Android Notches & Signal Indicators */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-top-padding {
+    padding-top: calc(env(safe-area-inset-top) + 0.5rem) !important;
+  }
 }
-
-aside {
-  padding-top: calc(1rem + env(safe-area-inset-top, 0px)) !important;
-}
-
