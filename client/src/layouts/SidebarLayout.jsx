@@ -22,9 +22,11 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import NotificationBell from '../components/NotificationBell';
+import { useTheme } from '../context/ThemeContext';
 
 export default function SidebarLayout() {
   const { user, logout } = useContext(AuthContext);
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [parentStudents, setParentStudents] = useState([]);
@@ -76,20 +78,20 @@ export default function SidebarLayout() {
       <Link 
         to={to} 
         onClick={closeSidebar}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 cursor-pointer min-h-[44px] ${
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-150 cursor-pointer min-h-[44px] ${
           active 
-            ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10 font-black scale-[1.01]' 
-            : 'text-gray-400 hover:text-white hover:bg-gray-800/60'
+            ? 'bg-blue-600 text-white shadow-xs font-black' 
+            : 'text-slate-650 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800'
         }`}
       >
-        <Icon size={18} className={active ? 'text-white' : 'text-gray-400 group-hover:text-white'} />
+        <Icon size={18} className={active ? 'text-white' : 'text-slate-500 dark:text-zinc-400'} />
         <span>{children}</span>
       </Link>
     );
   };
 
   return (
-    <div className="flex min-h-screen relative overflow-hidden bg-gray-50 font-sans">
+    <div className="flex min-h-screen relative overflow-hidden bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 font-sans transition-colors duration-150">
       {/* Mobile Sidebar Backdrop Overlay */}
       {isOpen && (
         <div 
@@ -100,19 +102,19 @@ export default function SidebarLayout() {
 
       {/* Sidebar Drawer */}
       <aside 
-        className={`fixed top-0 bottom-0 left-0 w-64 bg-slate-950 text-white flex flex-col shadow-xl z-40 transition-transform duration-300 md:relative md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 w-64 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-100 flex flex-col border-r border-slate-200 dark:border-zinc-800 shadow-xl z-40 transition-transform duration-300 md:relative md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Header Branding */}
-        <div className="p-4 border-b border-gray-900/80 flex items-center justify-between font-black text-md tracking-wider uppercase bg-gray-950/40 text-blue-400">
+        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between font-black text-md tracking-wider uppercase bg-slate-50 dark:bg-zinc-950/40 text-blue-600 dark:text-blue-400">
           <span className="flex items-center gap-2">
             <ShieldAlert size={20} className="text-blue-500 animate-pulse" />
             HostelFlow ERP
           </span>
           <button 
             onClick={closeSidebar}
-            className="md:hidden p-2 text-gray-400 hover:text-white focus:outline-none min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
+            className="md:hidden p-2 text-slate-400 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white focus:outline-none min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
           >
             <X size={20} />
           </button>
@@ -125,17 +127,17 @@ export default function SidebarLayout() {
             {/* Warden Navigation ordered by operational priority */}
             {user?.role === 'WARDEN' && (
               <>
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
                 <NavLink to="/warden" icon={LayoutDashboard}>Dashboard</NavLink>
                 
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Operations</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Operations</div>
                 <NavLink to="/attendance/mark" icon={CheckSquare}>Attendance</NavLink>
                 <NavLink to="/leaves/pending" icon={FileText}>Leave Requests</NavLink>
                 <NavLink to="/students/list" icon={Users}>Students</NavLink>
                 <NavLink to="/rooms" icon={Home}>Rooms</NavLink>
                 <NavLink to="/complaints" icon={AlertCircle}>Complaints</NavLink>
                 
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Utilities & Reports</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Utilities & Reports</div>
                 <NavLink to="/warden/mess" icon={Utensils}>Mess & Billing</NavLink>
                 <NavLink to="/notices/manage" icon={Megaphone}>Notices</NavLink>
                 <NavLink to="/warden/analytics" icon={BarChart2}>Analytics</NavLink>
@@ -146,21 +148,21 @@ export default function SidebarLayout() {
             {/* Admin Navigation ordered by operational priority */}
             {user?.role === 'ADMIN' && (
               <>
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
                 <NavLink to="/admin" icon={LayoutDashboard}>Dashboard</NavLink>
                 
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Management</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Management</div>
                 <NavLink to="/admin/hostels" icon={Home}>Hostels</NavLink>
                 <NavLink to="/admin/wardens" icon={Users}>Wardens</NavLink>
                 <NavLink to="/students/list" icon={Users}>Students</NavLink>
                 <NavLink to="/complaints" icon={AlertCircle}>Complaints</NavLink>
                 
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Finance & Notices</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Finance & Notices</div>
                 <NavLink to="/admin/billing" icon={Utensils}>Financials</NavLink>
                 <NavLink to="/admin/analytics" icon={BarChart2}>Analytics</NavLink>
                 <NavLink to="/notices/manage" icon={Megaphone}>Notices</NavLink>
 
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Governance</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Governance</div>
                 <NavLink to="/admin/audit-logs" icon={ShieldAlert}>Audit Logs</NavLink>
               </>
             )}
@@ -168,14 +170,14 @@ export default function SidebarLayout() {
             {/* Student Navigation ordered by operational priority */}
             {user?.role === 'STUDENT' && (
               <>
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
                 <NavLink to="/student" icon={LayoutDashboard}>Dashboard</NavLink>
                 
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Requests & Logs</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Requests & Logs</div>
                 <NavLink to="/student/leaves/request" icon={FileText}>Leave Requests</NavLink>
                 <NavLink to="/student/attendance" icon={CheckSquare}>Attendance</NavLink>
                 
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Utilities</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Utilities</div>
                 <NavLink to="/student/billing" icon={CreditCard}>Mess & Billing</NavLink>
                 <NavLink to="/student/complaints" icon={AlertCircle}>Complaints</NavLink>
                 <NavLink to="/notices" icon={Megaphone}>Notices</NavLink>
@@ -186,12 +188,12 @@ export default function SidebarLayout() {
             {/* Parent Navigation ordered by operational priority */}
             {user?.role === 'PARENT' && (
               <>
-                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
+                <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
                 <NavLink to="/parent" icon={LayoutDashboard}>Dashboard</NavLink>
                 
                 {parentStudents.length > 0 ? (
                   <>
-                    <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Linked Children</div>
+                    <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Linked Children</div>
                     {parentStudents.map(student => (
                       <NavLink key={student._id} to={`/parent/student/${student._id}`} icon={UserIcon}>
                         {student.fullName}
@@ -199,7 +201,7 @@ export default function SidebarLayout() {
                     ))}
                   </>
                 ) : (
-                  <div className="text-xs text-gray-500 italic p-3 text-center border border-dashed border-gray-800 rounded-xl mt-4">
+                  <div className="text-xs text-slate-500 dark:text-zinc-500 italic p-3 text-center border border-dashed border-slate-200 dark:border-zinc-800 rounded-xl mt-4">
                     Awaiting linked child credentials allocation
                   </div>
                 )}
@@ -210,19 +212,19 @@ export default function SidebarLayout() {
         </div>
 
         {/* ChatGPT/Slack-style Bottom Profile Component */}
-        <div className="p-4 border-t border-gray-900 bg-slate-950/80 relative" ref={dropdownRef}>
+        <div className="p-4 border-t border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 relative" ref={dropdownRef}>
           {profileDropdownOpen && (
-            <div className="absolute bottom-full left-4 right-4 mb-2 bg-slate-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 duration-150">
-              <div className="p-2 border-b border-gray-800 bg-slate-950/40">
-                <div className="px-3 py-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 duration-150">
+              <div className="p-2 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/40">
+                <div className="px-3 py-1 text-[9px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">
                   Terminal Control
                 </div>
               </div>
-              <div className="p-1 flex flex-col gap-0.5 text-xs">
+              <div className="p-1 flex flex-col gap-0.5 text-xs font-bold">
                 <Link
                   to="/profile"
                   onClick={() => { setProfileDropdownOpen(false); closeSidebar(); }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition flex items-center gap-2 cursor-pointer font-bold"
+                  className="w-full text-left px-3 py-2 rounded-lg text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition flex items-center gap-2 cursor-pointer"
                 >
                   <UserIcon size={14} />
                   My Profile
@@ -230,34 +232,70 @@ export default function SidebarLayout() {
                 <Link
                   to={user?.role === 'PARENT' ? '/parent/change-password' : '/profile/edit'}
                   onClick={() => { setProfileDropdownOpen(false); closeSidebar(); }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition flex items-center gap-2 cursor-pointer font-bold"
+                  className="w-full text-left px-3 py-2 rounded-lg text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition flex items-center gap-2 cursor-pointer"
                 >
                   <Settings size={14} />
                   Settings
                 </Link>
                 <button
                   onClick={() => { setProfileDropdownOpen(false); handleLogout(); }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition flex items-center gap-2 cursor-pointer font-bold"
+                  className="w-full text-left px-3 py-2 rounded-lg text-red-650 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition flex items-center gap-2 cursor-pointer"
                 >
                   <LogOut size={14} />
                   Logout
                 </button>
+                <div className="border-t border-slate-200 dark:border-zinc-800 my-1.5"></div>
+                <div className="px-3 py-1 text-[9px] font-black text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
+                  Appearance
+                </div>
+                <div className="flex p-1 gap-1">
+                  <button
+                    onClick={() => toggleTheme('light')}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      theme === 'light' 
+                        ? 'bg-blue-600 text-white font-black shadow-inner' 
+                        : 'text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    Light
+                  </button>
+                  <button
+                    onClick={() => toggleTheme('dark')}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      theme === 'dark' 
+                        ? 'bg-blue-600 text-white font-black shadow-inner' 
+                        : 'text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    Dark
+                  </button>
+                  <button
+                    onClick={() => toggleTheme('system')}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                      theme === 'system' 
+                        ? 'bg-blue-600 text-white font-black shadow-inner' 
+                        : 'text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    Sys
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           <div 
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-            className="flex items-center gap-3 bg-gray-900/40 border border-gray-900 hover:bg-gray-900/80 active:scale-[0.98] transition p-2.5 rounded-xl cursor-pointer select-none"
+            className="flex items-center gap-3 bg-slate-50 dark:bg-zinc-950/40 border border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800/80 active:scale-[0.98] transition p-2.5 rounded-xl cursor-pointer select-none"
           >
             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-xs text-white shadow-inner flex-shrink-0">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-black truncate text-gray-250 leading-tight">{user?.fullName}</div>
-              <div className="text-[9px] text-blue-400 font-black uppercase tracking-wider mt-0.5">{user?.role}</div>
+              <div className="text-xs font-black truncate text-slate-800 dark:text-zinc-200 leading-tight">{user?.fullName}</div>
+              <div className="text-[9px] text-blue-650 dark:text-blue-400 font-black uppercase tracking-wider mt-0.5">{user?.role}</div>
             </div>
-            <div className="text-gray-400 font-bold text-[9px] select-none pl-1">
+            <div className="text-slate-400 dark:text-zinc-500 font-bold text-[9px] select-none pl-1">
               {profileDropdownOpen ? '▲' : '▼'}
             </div>
           </div>
@@ -266,18 +304,18 @@ export default function SidebarLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
         {/* Responsive Top Header */}
-        <header className="bg-white shadow-sm border-b px-4 md:px-6 py-4 flex justify-between items-center z-10">
+        <header className="bg-white dark:bg-zinc-900 shadow-xs border-b border-slate-200 dark:border-zinc-800 px-4 md:px-6 py-4 flex justify-between items-center z-10">
           <div className="flex items-center gap-3">
             {/* Hamburger menu button for mobile */}
             <button 
               onClick={() => setIsOpen(true)}
-              className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg focus:outline-none min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
+              className="md:hidden p-2 -ml-2 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg focus:outline-none min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
             >
               <Menu size={24} />
             </button>
-            <h1 className="text-lg md:text-xl font-black text-slate-800 tracking-tight">
+            <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-zinc-100 tracking-tight">
               {user ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : ''} Portal
             </h1>
           </div>
@@ -287,7 +325,7 @@ export default function SidebarLayout() {
         </header>
         
         {/* Page Viewport Container */}
-        <div className="p-4 md:p-6 flex-1 overflow-y-auto w-full bg-slate-50/50">
+        <div className="p-4 md:p-6 flex-1 overflow-y-auto w-full bg-slate-50/50 dark:bg-zinc-950">
           <Outlet />
         </div>
       </main>

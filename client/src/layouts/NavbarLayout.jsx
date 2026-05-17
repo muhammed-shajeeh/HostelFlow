@@ -12,7 +12,7 @@ export default function NavbarLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-150">
       <nav className="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
         <Link to="/" className="font-bold text-xl tracking-wide">Smart Hostel</Link>
         <div>

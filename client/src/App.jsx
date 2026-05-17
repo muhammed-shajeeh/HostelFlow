@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 
@@ -71,9 +72,10 @@ import NotFound from './pages/NotFound';
 
 function App() {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <SocketProvider>
+          <BrowserRouter>
         <Toaster position="top-right" />
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -176,7 +178,8 @@ function App() {
         </BrowserRouter>
       </SocketProvider>
     </AuthProvider>
-  );
+  </ThemeProvider>
+);
 }
 
 export default App;

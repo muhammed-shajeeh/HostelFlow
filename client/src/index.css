@@ -1,1 +1,212 @@
 @import "tailwindcss";
+
+/* Configure class-based dark mode selector strategy for Tailwind CSS v4 */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out;
+  }
+}
+
+/* Prevent transition flashes */
+.theme-transitioning,
+.theme-transitioning * {
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out !important;
+}
+
+/* ==========================================================================
+   GITHUB DARK BRAND THEME OVERRIDES
+   ========================================================================== */
+
+.dark {
+  color-scheme: dark;
+}
+
+/* ── 1. MAIN CONTENT BACKGROUND (#0d1117) ───────────────────────────────── */
+/* Dashboard, main viewports, page canvases, and landing hero match this exactly */
+.dark body,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50,
+.dark .bg-slate-950,
+.dark .bg-zinc-950,
+.dark .bg-gray-50 {
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important; /* GitHub Primary Body Text */
+}
+
+/* ── 2. STRUCTURAL ANCHORS (#090d16) ────────────────────────────────────── */
+/* Darkest areas framing the dashboard for visual structure and native depth */
+.dark aside,
+.dark header,
+.dark .bg-zinc-900,
+.dark .bg-white.dark\:bg-zinc-900,
+.dark .border-t.border-slate-200.dark\:border-zinc-800.bg-white.dark\:bg-zinc-900 {
+  background-color: #090d16 !important;
+}
+
+/* ── 3. CARDS & PANELS (#161b22) ────────────────────────────────────────── */
+/* Cards are LIGHTER than the page background for depth, separation, and elevation */
+.dark .bg-white,
+.dark .bg-white\/95,
+.dark .bg-white\/80 {
+  background-color: #161b22 !important;
+  color: #c9d1d9 !important;
+}
+
+/* ── 4. HOVER & ACTIVE SURFACES (#21262d) ────────────────────────────────── */
+.dark .bg-gray-50\/50,
+.dark .bg-gray-100,
+.dark .bg-slate-100,
+.dark .bg-slate-100\/80,
+.dark .bg-gray-100\/80,
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-slate-50:hover {
+  background-color: #21262d !important;
+}
+
+/* ── Typography Contrast Hierarchy (zinc scales) ─────────────────────────── */
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-slate-950,
+.dark .text-gray-950 {
+  color: #f0f6fc !important; /* GitHub Bright Heading Text */
+}
+
+.dark .text-slate-700,
+.dark .text-slate-655,
+.dark .text-slate-650,
+.dark .text-slate-600,
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: #c9d1d9 !important; /* GitHub Standard text */
+}
+
+.dark .text-slate-500,
+.dark .text-slate-400,
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: #8b949e !important; /* GitHub Secondary text */
+}
+
+/* ── Subtle Borders & Grids (GitHub border-default #30363d) ───────────────── */
+.dark .border-slate-200,
+.dark .border-slate-100,
+.dark .border-gray-200,
+.dark .border-gray-100,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/40,
+.dark .border-blue-200\/80,
+.dark .border-blue-200\/40,
+.dark .border-slate-200\/10 {
+  border-color: #30363d !important;
+}
+
+.dark .divide-slate-200,
+.dark .divide-slate-100,
+.dark .divide-gray-200,
+.dark .divide-gray-100,
+.dark .divide-gray-50 {
+  border-color: #30363d !important;
+}
+
+/* ── Dynamic Input Fields & Select Controls ──────────────────────────────── */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0d1117 !important; /* GitHub input canvas background */
+  border-color: #30363d !important; /* GitHub input border */
+  color: #c9d1d9 !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #58a6ff !important; /* GitHub blue link accent */
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #484f58 !important; /* GitHub placeholder text */
+}
+
+.dark select option {
+  background-color: #161b22 !important;
+  color: #c9d1d9 !important;
+}
+
+/* ── Tables & Grid Data Lists ────────────────────────────────────────────── */
+.dark thead,
+.dark thead tr,
+.dark thead th {
+  background-color: #161b22 !important;
+  border-bottom: 2px solid #30363d !important;
+  color: #8b949e !important;
+}
+
+.dark tbody tr:hover,
+.dark tr:hover {
+  background-color: rgba(33, 38, 45, 0.4) !important;
+}
+
+/* ── Modal Overlays & Backdrop Frosting ──────────────────────────────────── */
+.dark .bg-slate-900\/60,
+.dark .bg-black\/50,
+.dark .bg-black\/60 {
+  background-color: rgba(13, 17, 23, 0.8) !important; /* GitHub canvas backdrop overlay */
+}
+
+/* ── Recharts & Analytical Dashboards Compatibility overrides ───────────── */
+.dark .recharts-cartesian-grid-horizontal line,
+.dark .recharts-cartesian-grid-vertical line {
+  stroke: #21262d !important;
+}
+
+.dark .recharts-text,
+.dark .recharts-label,
+.dark .recharts-axis-tick-value {
+  fill: #8b949e !important;
+}
+
+.dark .recharts-legend-item-text {
+  color: #c9d1d9 !important;
+}
+
+.dark .recharts-default-tooltip {
+  background-color: #161b22 !important;
+  border: 1px solid #30363d !important;
+  color: #c9d1d9 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .recharts-tooltip-item {
+  color: #c9d1d9 !important;
+}
+
+.dark .recharts-tooltip-cursor {
+  stroke: #30363d !important;
+}
+
+/* ── Scrollbars customized dark format ──────────────────────────────────── */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}

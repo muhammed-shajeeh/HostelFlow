@@ -16,10 +16,13 @@ import {
   ArrowLeft,
   Eye,
   EyeOff,
-  CheckCircle2
+  CheckCircle2,
+  Sun,
+  Moon
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import { useTheme } from '../context/ThemeContext';
 
 // High-fidelity vector SVG logo based exactly on visual reference
 const HostelFlowLogo = ({ className = "w-6 h-6", color = "currentColor" }) => (
@@ -63,6 +66,7 @@ const CenterBedIllustration = () => (
 
 export default function Landing() {
   const auth = useContext(AuthContext);
+  const { theme, toggleTheme } = useTheme();
   const { user, login, logout } = auth || {};
   const navigate = useNavigate();
 
@@ -307,15 +311,32 @@ export default function Landing() {
                 </button>
               </div>
             )}
+            {/* Theme Switcher Toggle */}
+            <button
+              onClick={() => toggleTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer ml-1"
+              title="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
           </nav>
 
           {/* Mobile Hamburger Toggle */}
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            <button
+              onClick={() => toggleTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              title="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white transition cursor-pointer"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Dropdown Panel */}
