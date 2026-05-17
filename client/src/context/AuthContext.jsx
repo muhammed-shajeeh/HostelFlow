@@ -27,6 +27,16 @@ export const AuthProvider = ({ children }) => {
     fetchUser();
   }, [token]);
 
+  useEffect(() => {
+    if (user) {
+      import('../utils/pushManager')
+        .then(({ registerPushNotifications }) => {
+          registerPushNotifications(user);
+        })
+        .catch(err => console.warn('Failed to register push notifications', err));
+    }
+  }, [user]);
+
   const login = (newToken, userData) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
@@ -34,6 +44,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    import('../utils/pushManager')
+      .then(({ deregisterPushNotifications }) => {
+        deregisterPushNotifications();
+      })
+      .catch(err => console.warn('Failed to deregister push notifications', err));
+
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);

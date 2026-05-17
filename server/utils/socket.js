@@ -137,6 +137,24 @@ const createAndEmitNotification = async ({ recipientId, title, message, type, pr
       io.to(`USER_${recipientId}`).emit('REFRESH_DASHBOARD', { type });
     }
 
+    // Hybrid Background Push Delivery: Dispatch FCM push notification asynchronously
+    try {
+      const DeviceToken = require('../models/DeviceToken');
+      const deviceDocs = await DeviceToken.find({ userId: recipientId }).select('fcmToken').lean();
+      if (deviceDocs && deviceDocs.length > 0) {
+        const tokens = deviceDocs.map(d => d.fcmToken);
+        const { sendPushNotification } = require('./fcmHelper');
+        sendPushNotification(tokens, {
+          title,
+          body: message,
+          route: actionUrl || '/',
+          entityId: String(relatedEntityId || '')
+        }).catch(err => console.error('[FCM Async Delivery Error]', err));
+      }
+    } catch (pushErr) {
+      console.error('[FCM Registration Lookup Failed]', pushErr);
+    }
+
     return notification;
   } catch (error) {
     console.error('[Socket Manager] Failed to create or broadcast notification:', error);
