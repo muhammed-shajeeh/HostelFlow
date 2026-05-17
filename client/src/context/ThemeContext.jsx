@@ -9,57 +9,54 @@ export function ThemeProvider({ children }) {
     if (stored === 'light' || stored === 'dark' || stored === 'system') {
       return stored;
     }
-    return 'system'; // Default to System Theme Mode
+    return 'system'; // Default to System Theme Mode out-of-the-box
   });
+
+  const [systemIsDark, setSystemIsDark] = useState(
+    () => window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+
+  // Monitor dynamic OS preference changes reactively
+  useEffect(() => {
+    if (theme !== 'system') return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e) => {
+      setSystemIsDark(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemThemeChange);
+    };
+  }, [theme]);
+
+  // Derived state value that is fully reactive to theme state and OS switches
+  const isDarkMode = theme === 'dark' || (theme === 'system' && systemIsDark);
 
   useEffect(() => {
     const root = window.document.documentElement;
     
-    // Smooth transition control class addition (preventing visual layout shift or transition flashing on initial load)
+    // Smooth transition class to prevent flashes
     root.classList.add('theme-transitioning');
     
-    const applyTheme = () => {
-      if (theme === 'dark') {
-        root.classList.add('dark');
-        root.style.colorScheme = 'dark';
-      } else if (theme === 'light') {
-        root.classList.remove('dark');
-        root.style.colorScheme = 'light';
-      } else if (theme === 'system') {
-        const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (systemIsDark) {
-          root.classList.add('dark');
-          root.style.colorScheme = 'dark';
-        } else {
-          root.classList.remove('dark');
-          root.style.colorScheme = 'light';
-        }
-      }
-    };
+    if (isDarkMode) {
+      root.classList.add('dark');
+      root.style.colorScheme = 'dark';
+    } else {
+      root.classList.remove('dark');
+      root.style.colorScheme = 'light';
+    }
 
-    applyTheme();
     localStorage.setItem('erp-theme', theme);
 
-    // Timeout to release transition limit
+    // Release transition constraints
     const timer = setTimeout(() => {
       root.classList.remove('theme-transitioning');
     }, 150);
 
-    // Dynamic OS preference listener
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleSystemThemeChange = () => {
-        applyTheme();
-      };
-      mediaQuery.addEventListener('change', handleSystemThemeChange);
-      return () => {
-        mediaQuery.removeEventListener('change', handleSystemThemeChange);
-        clearTimeout(timer);
-      };
-    }
-
     return () => clearTimeout(timer);
-  }, [theme]);
+  }, [theme, isDarkMode]);
 
   const toggleTheme = (newTheme) => {
     if (newTheme === 'light' || newTheme === 'dark' || newTheme === 'system') {
@@ -68,7 +65,7 @@ export function ThemeProvider({ children }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, isDarkMode }}>
       {children}
     </ThemeContext.Provider>
   );

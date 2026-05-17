@@ -67,7 +67,7 @@ const CenterBedIllustration = () => (
 
 export default function Landing() {
   const auth = useContext(AuthContext);
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, isDarkMode } = useTheme();
   const { user, login, logout } = auth || {};
   const navigate = useNavigate();
 
@@ -255,10 +255,6 @@ export default function Landing() {
     { label: 'Parents', icon: Users, radius: 170, angle: 257.1, color: 'text-rose-500 bg-rose-50 border-rose-150' },
     { label: 'Students', icon: GraduationCap, radius: 170, angle: 308.6, color: 'text-slate-800 bg-slate-100 border-slate-200' },
   ];
-
-  const isDarkMode = 
-    theme === 'dark' || 
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const handleToggleTheme = () => {
     toggleTheme(isDarkMode ? 'light' : 'dark');
