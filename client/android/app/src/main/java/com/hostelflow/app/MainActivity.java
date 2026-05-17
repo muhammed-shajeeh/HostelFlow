@@ -1,4 +1,4 @@
-package com.muhammedshajeeh.hostelflow;
+package com.hostelflow.app;
 
 import com.getcapacitor.BridgeActivity;
 

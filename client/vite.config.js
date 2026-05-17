@@ -24,7 +24,7 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'HostelFlow ERP',
+        name: 'HostelFlow',
         short_name: 'HostelFlow',
         description: 'Complete Smart Hostel ERP Management System with QR Outpass & Mess Governance',
         theme_color: '#0d1117',

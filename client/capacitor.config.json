@@ -1,6 +1,6 @@
 {
-  "appId": "com.muhammedshajeeh.hostelflow",
-  "appName": "HostelFlow ERP",
+  "appId": "com.hostelflow.app",
+  "appName": "HostelFlow",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
