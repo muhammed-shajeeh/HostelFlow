@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HostelFlow ERP</string>
+    <string name="title_activity_main">HostelFlow ERP</string>
+    <string name="package_name">com.muhammedshajeeh.hostelflow</string>
+    <string name="custom_url_scheme">com.muhammedshajeeh.hostelflow</string>
+</resources>

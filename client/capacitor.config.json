@@ -1,0 +1,10 @@
+{
+  "appId": "com.muhammedshajeeh.hostelflow",
+  "appName": "HostelFlow ERP",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": ["*"]
+  }
+}

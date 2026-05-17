@@ -18,7 +18,8 @@ import {
   ShieldAlert, 
   Download, 
   CreditCard,
-  Settings
+  Settings,
+  WifiOff
 } from 'lucide-react';
 import api from '../api';
 import NotificationBell from '../components/NotificationBell';
@@ -31,7 +32,42 @@ export default function SidebarLayout() {
   const [isOpen, setIsOpen] = useState(false);
   const [parentStudents, setParentStudents] = useState([]);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    try {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } catch (err) {
+      console.warn('Install prompt failed:', err);
+      setDeferredPrompt(null);
+    }
+  };
 
   useEffect(() => {
     if (user && user.role === 'PARENT') {
@@ -244,6 +280,15 @@ export default function SidebarLayout() {
                   <LogOut size={14} />
                   Logout
                 </button>
+                {deferredPrompt && (
+                  <button
+                    onClick={() => { setProfileDropdownOpen(false); handleInstallClick(); }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-blue-650 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition flex items-center gap-2 cursor-pointer font-bold"
+                  >
+                    <Download size={14} />
+                    Install App
+                  </button>
+                )}
                 <div className="border-t border-slate-200 dark:border-zinc-800 my-1.5"></div>
                 <div className="px-3 py-1 text-[9px] font-black text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
                   Appearance
@@ -315,8 +360,14 @@ export default function SidebarLayout() {
             >
               <Menu size={24} />
             </button>
-            <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-zinc-100 tracking-tight">
+            <h1 className="text-lg md:text-xl font-black text-slate-800 dark:text-zinc-100 tracking-tight flex items-center gap-2">
               {user ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : ''} Portal
+              {!isOnline && (
+                <span className="text-[10px] font-black uppercase bg-red-600 text-white px-2.5 py-0.5 rounded-full flex items-center gap-1 animate-pulse select-none">
+                  <WifiOff size={10} />
+                  Offline
+                </span>
+              )}
             </h1>
           </div>
           <div className="flex items-center gap-2">
