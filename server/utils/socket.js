@@ -5,12 +5,11 @@ const Notification = require('../models/Notification');
 
 let io = null;
 
+const { corsOptions } = require('./corsConfig');
+
 const initSocket = (server) => {
   io = socketIo(server, {
-    cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-      credentials: true
-    }
+    cors: corsOptions
   });
 
   // Authentication Middleware for Sockets

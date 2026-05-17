@@ -51,7 +51,9 @@ export const SocketProvider = ({ children }) => {
 
     // Connect to backend Socket.IO server
     const getSocketUrl = () => {
-      if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+      if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL.trim().replace(/\/api\/?$/, '').replace(/\/$/, '');
+      }
       if (Capacitor.isNativePlatform()) return 'http://10.0.2.2:5000';
       return 'http://localhost:5000';
     };

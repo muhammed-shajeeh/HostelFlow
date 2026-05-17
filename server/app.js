@@ -23,12 +23,10 @@ const auditRoutes = require('./routes/auditRoutes');
 
 const app = express();
 
-// Security middleware
+// Security middleware & CORS configuration
+const { corsOptions } = require('./utils/corsConfig');
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({

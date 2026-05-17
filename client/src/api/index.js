@@ -4,7 +4,8 @@ import { Capacitor } from '@capacitor/core';
 // Environment-aware API URL detection
 const getBaseURL = () => {
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    const base = import.meta.env.VITE_API_URL.trim().replace(/\/$/, '');
+    return base.endsWith('/api') ? base : `${base}/api`;
   }
   
   if (Capacitor.isNativePlatform()) {
