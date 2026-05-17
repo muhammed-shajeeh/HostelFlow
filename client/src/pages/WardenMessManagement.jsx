@@ -2,6 +2,32 @@ import { useState, useEffect, useContext } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
+import { 
+  Landmark, 
+  Settings, 
+  RotateCw, 
+  Folder, 
+  BarChart3, 
+  ChefHat, 
+  Sliders, 
+  FileText, 
+  TrendingUp, 
+  DollarSign, 
+  Lock, 
+  Unlock,
+  AlertTriangle, 
+  Save, 
+  Download, 
+  Bell, 
+  Search,
+  Sparkles,
+  PenSquare,
+  History,
+  Plane,
+  XOctagon,
+  Calendar,
+  LockKeyhole
+} from 'lucide-react';
 
 export default function WardenMessManagement() {
   const { user } = useContext(AuthContext);
@@ -473,11 +499,12 @@ export default function WardenMessManagement() {
       
       {/* Dynamic Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border shadow-sm">
-        <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            🏛️ Financial Governance & ERP Billing Console
+        <div className="space-y-1">
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2.5">
+            <Landmark className="text-indigo-600" size={24} />
+            Financial Governance & ERP Billing Console
           </h2>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 font-medium">
             Auditable double-entry accounting controls. Wardens apply minor corrections up to ₹500; Admins finalize runs, set global rates, and process refunds.
           </p>
         </div>
@@ -485,20 +512,23 @@ export default function WardenMessManagement() {
           {user?.role === 'ADMIN' ? (
             <button 
               onClick={() => setShowConfigModal(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow hover:bg-indigo-700 transition"
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer"
             >
-              ⚙️ Configure Baseline Pricing
+              <Settings size={14} />
+              Configure Baseline Pricing
             </button>
           ) : (
-            <div className="bg-slate-50 border px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-500">
-              🔒 Rates Config: ADMIN ONLY
+            <div className="bg-slate-50 border px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-500 flex items-center gap-1">
+              <Lock size={12} className="text-slate-400" />
+              Rates Config: ADMIN ONLY
             </div>
           )}
           <button 
             onClick={fetchTomorrowCounts}
-            className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs shadow transition"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs shadow transition cursor-pointer"
           >
-            🔄 Sync Kitchen Prep Plan
+            <RotateCw size={14} />
+            Sync Kitchen Prep Plan
           </button>
         </div>
       </div>
@@ -507,59 +537,66 @@ export default function WardenMessManagement() {
       <div className="flex flex-wrap gap-2 border-b pb-2">
         <button 
           onClick={() => setActiveTab('cycles')}
-          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
-            activeTab === 'cycles' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs transition cursor-pointer ${
+            activeTab === 'cycles' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-155'
           }`}
         >
-          📂 Monthly Billing Runs
+          <Folder size={14} />
+          Monthly Billing Runs
         </button>
         <button 
           onClick={() => setActiveTab('ledger')}
-          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
-            activeTab === 'ledger' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs transition cursor-pointer ${
+            activeTab === 'ledger' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-155'
           }`}
         >
-          📊 Outstanding Debts Ledger
+          <BarChart3 size={14} />
+          Outstanding Debts Ledger
         </button>
         <button 
           onClick={() => setActiveTab('kitchen')}
-          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
-            activeTab === 'kitchen' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs transition cursor-pointer ${
+            activeTab === 'kitchen' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-155'
           }`}
         >
-          🍳 Kitchen Operations Prep
+          <ChefHat size={14} />
+          Kitchen Operations Prep
         </button>
         <button 
           onClick={() => setActiveTab('overrides')}
-          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
-            activeTab === 'overrides' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs transition cursor-pointer ${
+            activeTab === 'overrides' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-155'
           }`}
         >
-          🛠️ Resident Overrides Ledger
+          <Sliders size={14} />
+          Resident Overrides Ledger
         </button>
         <button 
           onClick={() => setActiveTab('audit')}
-          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
-            activeTab === 'audit' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs transition cursor-pointer ${
+            activeTab === 'audit' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-155'
           }`}
         >
-          📜 Master Audit Trail Ledger
+          <FileText size={14} />
+          Master Audit Trail Ledger
         </button>
         <button 
           onClick={() => { setActiveTab('analytics'); fetchPaymentAnalytics(); }}
-          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
-            activeTab === 'analytics' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs transition cursor-pointer ${
+            activeTab === 'analytics' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-155'
           }`}
         >
-          📈 Live Revenue Analytics
+          <TrendingUp size={14} />
+          Live Revenue Analytics
         </button>
         <button 
           onClick={() => { setActiveTab('transactions'); fetchMasterLedgerAndAudits(); }}
-          className={`px-4 py-2 rounded-xl font-black text-xs transition ${
-            activeTab === 'transactions' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-150'
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs transition cursor-pointer ${
+            activeTab === 'transactions' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-500 border border-gray-155'
           }`}
         >
-          💸 Transaction History Ledger
+          <DollarSign size={14} />
+          Transaction History Ledger
         </button>
       </div>
 
@@ -567,7 +604,10 @@ export default function WardenMessManagement() {
       {activeTab === 'kitchen' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4 lg:col-span-1">
-            <h3 className="text-base font-black text-slate-800">❄️ Freeze Daily Ledgers Manual</h3>
+            <h3 className="text-base font-black text-slate-800 flex items-center gap-1.5">
+              <Lock size={16} className="text-indigo-500" />
+              Freeze Daily Ledgers Manual
+            </h3>
             <p className="text-[11px] text-gray-400">
               Locks resident meal plans into the immutable daily ledger immediately.
             </p>
@@ -584,9 +624,10 @@ export default function WardenMessManagement() {
               <button
                 onClick={triggerManualFreeze}
                 disabled={freezingLedger}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl font-bold transition shadow disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl font-bold transition shadow disabled:opacity-50 cursor-pointer"
               >
-                {freezingLedger ? 'Freezing ledger...' : '❄️ Trigger Manual Freeze Run'}
+                <Lock size={14} />
+                {freezingLedger ? 'Freezing ledger...' : 'Trigger Manual Freeze Run'}
               </button>
             </div>
           </div>
@@ -604,23 +645,23 @@ export default function WardenMessManagement() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-center">
-                  <span className="block text-[9px] font-black text-indigo-600 uppercase">🍳 Breakfast</span>
+                  <span className="block text-[9px] font-black text-indigo-600 uppercase">Breakfast</span>
                   <strong className="text-3xl font-black text-indigo-700">{counts.breakfastCount || 0}</strong>
                 </div>
                 <div className="bg-green-50 border border-green-100 p-4 rounded-xl text-center">
-                  <span className="block text-[9px] font-black text-green-600 uppercase">🍛 Lunch</span>
+                  <span className="block text-[9px] font-black text-green-600 uppercase">Lunch</span>
                   <strong className="text-3xl font-black text-green-700">{counts.lunchCount || 0}</strong>
                 </div>
                 <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl text-center">
-                  <span className="block text-[9px] font-black text-amber-600 uppercase">🍲 Dinner</span>
+                  <span className="block text-[9px] font-black text-amber-600 uppercase">Dinner</span>
                   <strong className="text-3xl font-black text-amber-700">{counts.dinnerCount || 0}</strong>
                 </div>
                 <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-center">
-                  <span className="block text-[9px] font-black text-red-600 uppercase">🚷 Manually Skipped</span>
+                  <span className="block text-[9px] font-black text-red-600 uppercase">Skipped</span>
                   <strong className="text-2xl font-black text-red-700">{counts.skippedCount || 0}</strong>
                 </div>
                 <div className="bg-slate-50 border p-4 rounded-xl text-center">
-                  <span className="block text-[9px] font-black text-slate-500 uppercase">✈️ On Leave</span>
+                  <span className="block text-[9px] font-black text-slate-500 uppercase">On Leave</span>
                   <strong className="text-2xl font-black text-slate-700">{counts.leaveCount || 0}</strong>
                 </div>
               </div>
@@ -633,7 +674,10 @@ export default function WardenMessManagement() {
       {activeTab === 'overrides' && (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div>
-            <h3 className="text-lg font-black text-slate-800">🛠️ Resident Meal Override Panel</h3>
+            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+              <Sliders size={20} className="text-indigo-600" />
+              Resident Meal Override Panel
+            </h3>
             <p className="text-xs text-gray-400">Apply custom corrections for early returns, unexpected leaves or special diet entries.</p>
           </div>
 
@@ -644,7 +688,7 @@ export default function WardenMessManagement() {
                 <select
                   value={overrideForm.studentId}
                   onChange={(e) => setOverrideForm({ ...overrideForm, studentId: e.target.value })}
-                  className="w-full border rounded-xl px-3 py-2 font-bold focus:outline-indigo-500"
+                  className="w-full border rounded-xl px-3 py-2 font-bold focus:outline-indigo-500 bg-white"
                   required
                 >
                   <option value="">-- Select Student --</option>
@@ -678,7 +722,7 @@ export default function WardenMessManagement() {
                     onChange={(e) => setOverrideForm({ ...overrideForm, breakfastIncluded: e.target.checked })}
                     className="rounded border text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                   />
-                  🍳 Breakfast Included
+                  Breakfast Included
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer font-black text-xs text-slate-800">
                   <input
@@ -687,7 +731,7 @@ export default function WardenMessManagement() {
                     onChange={(e) => setOverrideForm({ ...overrideForm, lunchIncluded: e.target.checked })}
                     className="rounded border text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                   />
-                  🍛 Lunch Included
+                  Lunch Included
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer font-black text-xs text-slate-800">
                   <input
@@ -696,7 +740,7 @@ export default function WardenMessManagement() {
                     onChange={(e) => setOverrideForm({ ...overrideForm, dinnerIncluded: e.target.checked })}
                     className="rounded border text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                   />
-                  🍲 Dinner Included
+                  Dinner Included
                 </label>
               </div>
             </div>
@@ -708,7 +752,7 @@ export default function WardenMessManagement() {
                   value={overrideForm.reason}
                   onChange={(e) => setOverrideForm({ ...overrideForm, reason: e.target.value })}
                   placeholder="Explain exactly why this override correction is requested..."
-                  className="w-full border border-red-200 rounded-xl p-3 focus:outline-red-500 bg-red-50/20"
+                  className="w-full border border-red-200 rounded-xl p-3 focus:outline-red-500 bg-red-50/20 font-medium"
                   rows="5"
                   required
                 />
@@ -717,9 +761,10 @@ export default function WardenMessManagement() {
               <button
                 type="submit"
                 disabled={submittingOverride}
-                className="w-full bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-xl font-bold shadow-sm transition disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 w-full bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-xl font-bold shadow-sm transition disabled:opacity-50 cursor-pointer"
               >
-                {submittingOverride ? 'Submitting Override...' : '💾 Apply Operational Override'}
+                <Save size={14} />
+                {submittingOverride ? 'Submitting Override...' : 'Apply Operational Override'}
               </button>
             </div>
           </form>
@@ -763,9 +808,10 @@ export default function WardenMessManagement() {
                 <button
                   type="submit"
                   disabled={generating}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-xl shadow transition disabled:opacity-50"
+                  className="flex items-center justify-center gap-1.5 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-xl shadow transition disabled:opacity-50 cursor-pointer"
                 >
-                  {generating ? 'Compiling Invoice Sheets...' : '✨ Create Draft Invoices'}
+                  <Sparkles size={14} />
+                  {generating ? 'Compiling Invoice Sheets...' : 'Create Draft Invoices'}
                 </button>
               </form>
             </div>
@@ -820,20 +866,23 @@ export default function WardenMessManagement() {
                         <>
                           <button
                             onClick={() => handleRegenerateDraft(selectedCycle._id)}
-                            className="px-2.5 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-200 transition"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-200 transition cursor-pointer"
                           >
-                            🔄 Re-Run Draft Calculations
+                            <RotateCw size={12} />
+                            Re-Run Draft Calculations
                           </button>
                           {user?.role === 'ADMIN' ? (
                             <button
                               onClick={() => handleFinalizeCycle(selectedCycle._id)}
-                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-sm transition"
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-sm transition cursor-pointer"
                             >
-                              🎯 Lock & Finalize Cycle
+                              <LockKeyhole size={12} />
+                              Lock & Finalize Cycle
                             </button>
                           ) : (
-                            <span className="bg-slate-50 border text-slate-400 text-[10px] font-bold px-2 py-1.5 rounded-lg">
-                              🔒 Finalize: ADMIN ONLY
+                            <span className="flex items-center gap-1 bg-slate-50 border text-slate-400 text-[10px] font-bold px-2 py-1.5 rounded-lg">
+                              <Lock size={12} />
+                              Finalize: ADMIN ONLY
                             </span>
                           )}
                         </>
@@ -865,7 +914,10 @@ export default function WardenMessManagement() {
                                 <div className="font-bold text-slate-800">{inv.studentSnapshot?.fullName}</div>
                                 <div className="text-[9px] text-gray-400">ID: {inv.studentSnapshot?.admissionNumber} | Room {inv.roomSnapshot?.roomNumber}</div>
                                 {inv.financialHold && (
-                                  <span className="inline-block bg-red-100 text-red-800 text-[8px] px-1.5 py-0.5 rounded font-black mt-1 uppercase">⚠️ Financial Hold Risk</span>
+                                  <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 text-[8px] px-1.5 py-0.5 rounded font-black mt-1 uppercase">
+                                    <AlertTriangle size={10} />
+                                    Financial Hold Risk
+                                  </span>
                                 )}
                               </td>
                               <td className="px-4 py-3 space-y-0.5 text-gray-500">
@@ -887,35 +939,39 @@ export default function WardenMessManagement() {
                                 {selectedCycle.status === 'DRAFT' ? (
                                   <button
                                     onClick={() => openAdjustmentModal(inv)}
-                                    className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded border border-indigo-200 text-[10px]"
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded border border-indigo-200 text-[10px] cursor-pointer"
                                   >
-                                    ✍️ Adjust Draft
+                                    <PenSquare size={10} />
+                                    Adjust Draft
                                   </button>
                                 ) : (
                                   <>
                                     <button
                                       onClick={() => setTimelineInvoice(inv)}
-                                      className="px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded border text-[10px]"
+                                      className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded border text-[10px] cursor-pointer"
                                     >
-                                      📜 View Timeline
+                                      <FileText size={10} />
+                                      View Timeline
                                     </button>
                                     
                                     {inv.status !== 'PAID' && (
                                       <button
                                         disabled={sendingReminderId === inv._id}
                                         onClick={() => handleSendReminder(inv._id)}
-                                        className="px-2 py-1 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold rounded border border-orange-200 text-[10px]"
+                                        className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold rounded border border-orange-200 text-[10px] cursor-pointer"
                                       >
-                                        {sendingReminderId === inv._id ? 'Sending...' : '🔔 Remind'}
+                                        <Bell size={10} />
+                                        {sendingReminderId === inv._id ? 'Sending...' : 'Remind'}
                                       </button>
                                     )}
 
                                     {user?.role === 'ADMIN' && inv.amountPaid > 0 && (
                                       <button
                                         onClick={() => openRefundModal(inv)}
-                                        className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded border border-red-200 text-[10px]"
+                                        className="inline-flex items-center gap-1 px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded border border-red-200 text-[10px] cursor-pointer"
                                       >
-                                        💸 Issue Refund
+                                        <DollarSign size={10} />
+                                        Issue Refund
                                       </button>
                                     )}
                                   </>
@@ -929,9 +985,9 @@ export default function WardenMessManagement() {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-20 text-gray-400 italic flex flex-col items-center justify-center">
-                  <span className="text-4xl mb-2">📊</span>
-                  <p className="text-sm font-bold">No Active Cycle Selected</p>
+                <div className="text-center py-20 text-gray-400 italic flex flex-col items-center justify-center space-y-2">
+                  <Folder size={36} className="text-gray-300 animate-pulse" />
+                  <p className="text-sm font-bold text-gray-500">No Active Cycle Selected</p>
                   <p className="text-xs text-gray-400 mt-1">Select a monthly billing cycle from the history panel to audit and adjust invoices.</p>
                 </div>
               )}
@@ -946,9 +1002,12 @@ export default function WardenMessManagement() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
-              <h3 className="text-lg font-black text-slate-800">Outstanding Ledgers & Financial Hold List</h3>
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <BarChart3 size={20} className="text-indigo-600" />
+                Outstanding Ledgers & Financial Hold List
+              </h3>
               <p className="text-xs text-gray-400">
-                Residents with outstanding fee balances. Accounts flagged with "⚠️ Financial Hold" represent severe payment lapses.
+                Residents with outstanding fee balances. Accounts flagged with "Financial Hold" represent severe payment lapses.
               </p>
             </div>
             
@@ -956,21 +1015,24 @@ export default function WardenMessManagement() {
             <div className="flex flex-wrap gap-2">
               <button 
                 onClick={() => triggerExport('UNPAID')}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shadow-sm transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shadow-sm transition cursor-pointer"
               >
-                📥 Export Unpaid CSV
+                <Download size={12} />
+                Export Unpaid CSV
               </button>
               <button 
                 onClick={() => triggerExport('OVERDUE')}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition cursor-pointer"
               >
-                📥 Export Overdue CSV
+                <Download size={12} />
+                Export Overdue CSV
               </button>
               <button 
                 onClick={() => triggerExport('COLLECTIONS')}
-                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition cursor-pointer"
               >
-                📥 Export Collections CSV
+                <Download size={12} />
+                Export Collections CSV
               </button>
             </div>
           </div>
@@ -999,7 +1061,10 @@ export default function WardenMessManagement() {
                       <td className="px-6 py-3 font-bold">Room {item.room}</td>
                       <td className="px-6 py-3">
                         {item.financialHold ? (
-                          <span className="bg-red-100 text-red-800 text-[10px] font-black px-2.5 py-0.5 rounded uppercase">⚠️ FINANCIAL HOLD RISK</span>
+                          <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 text-[10px] font-black px-2.5 py-0.5 rounded uppercase">
+                            <AlertTriangle size={12} />
+                            FINANCIAL HOLD RISK
+                          </span>
                         ) : (
                           <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Dues Pending</span>
                         )}
@@ -1169,7 +1234,10 @@ export default function WardenMessManagement() {
         <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6 animate-fadeIn">
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
             <div>
-              <h3 className="text-lg font-black text-slate-800">💸 Complete ERP Financial Transaction History</h3>
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <DollarSign size={20} className="text-indigo-600" />
+                Complete ERP Financial Transaction History
+              </h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 {user?.role === 'ADMIN' 
                   ? "Global multi-hostel transaction history stream capturing all online gateway checkouts, partial settlements, and manual cash refunds."
@@ -1179,18 +1247,19 @@ export default function WardenMessManagement() {
             </div>
             <button 
               onClick={fetchMasterLedgerAndAudits}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition shadow-sm cursor-pointer"
             >
-              🔄 Refresh Ledger Logs
+              <RotateCw size={14} />
+              Refresh Ledger Logs
             </button>
           </div>
 
           {loadingTransactions ? (
             <div className="text-center py-20 text-gray-400 italic">Compiling unalterable financial transaction ledgers...</div>
           ) : transactions.length === 0 ? (
-            <div className="text-center py-20 text-gray-400 italic flex flex-col items-center justify-center">
-              <span className="text-4xl mb-2">💸</span>
-              <p className="text-sm font-bold">No Transaction Records Found</p>
+            <div className="text-center py-20 text-gray-400 italic flex flex-col items-center justify-center space-y-2">
+              <DollarSign size={36} className="text-gray-300 animate-bounce" />
+              <p className="text-sm font-bold text-gray-500">No Transaction Records Found</p>
               <p className="text-xs text-gray-400 mt-1">There are no documented payments or settlements recorded in the ledger.</p>
             </div>
           ) : (
@@ -1290,8 +1359,9 @@ export default function WardenMessManagement() {
                 Resident: <strong>{editingInvoice.studentSnapshot?.fullName}</strong> | Original Amount: ₹{editingInvoice.messCharges + editingInvoice.hostelRent + editingInvoice.maintenanceFee + editingInvoice.electricityFee + editingInvoice.previousBalance}
               </p>
               {user?.role === 'WARDEN' && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-800 font-bold mt-2">
-                  ⚠️ Governance Warning: Warden corrections are limited to ₹500 per component. Greater overrides will be rejected by server validation.
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-800 font-bold mt-2 flex items-center gap-1.5">
+                  <AlertTriangle size={14} className="text-amber-600 flex-shrink-0" />
+                  <span>Governance Warning: Warden corrections are limited to ₹500 per component. Greater overrides will be rejected by server validation.</span>
                 </div>
               )}
             </div>
@@ -1354,16 +1424,17 @@ export default function WardenMessManagement() {
                 <button
                   type="button"
                   onClick={() => setEditingInvoice(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingAdjustments}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs shadow"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs shadow cursor-pointer"
                 >
-                  {savingAdjustments ? 'Saving Audit Record...' : '💾 Save Adjustments'}
+                  <Save size={14} />
+                  {savingAdjustments ? 'Saving Audit Record...' : 'Save Adjustments'}
                 </button>
               </div>
             </form>
@@ -1431,7 +1502,10 @@ export default function WardenMessManagement() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl border max-w-md w-full p-6 space-y-4 animate-fadeIn">
             <div>
-              <h3 className="text-lg font-black text-red-600">💸 Authorize Credit Refund</h3>
+              <h3 className="text-lg font-black text-red-600 flex items-center gap-2">
+                <DollarSign size={20} className="text-red-600" />
+                Authorize Credit Refund
+              </h3>
               <p className="text-xs text-gray-400 mt-1">
                 Refunding for resident: <strong>{refundInvoiceObj.studentSnapshot?.fullName}</strong>
               </p>
@@ -1466,16 +1540,17 @@ export default function WardenMessManagement() {
                 <button
                   type="button"
                   onClick={() => setRefundInvoiceObj(null)}
-                  className="px-4 py-2 bg-gray-150 hover:bg-gray-250 text-gray-700 rounded-lg text-xs"
+                  className="px-4 py-2 bg-gray-150 hover:bg-gray-250 text-gray-700 rounded-lg text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={refunding}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs shadow"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs shadow cursor-pointer"
                 >
-                  {refunding ? 'Reconciling Ledger...' : '💸 Approve Credit Refund'}
+                  <DollarSign size={14} />
+                  {refunding ? 'Reconciling Ledger...' : 'Approve Credit Refund'}
                 </button>
               </div>
             </form>
@@ -1626,13 +1701,13 @@ export default function WardenMessManagement() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold shadow transition"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer"
               >
-                🖨️ Print Receipt
+                Print Receipt
               </button>
               <button
                 onClick={() => setReceiptDetail(null)}
-                className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold"
+                className="px-4 py-2 bg-gray-150 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold cursor-pointer"
               >
                 Close
               </button>

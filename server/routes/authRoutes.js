@@ -1,6 +1,16 @@
 const express = require('express');
 const { check } = require('express-validator');
-const { register, verifyEmail, login, getMe, updateProfile, securityLogin } = require('../controllers/authController');
+const { 
+  register, 
+  verifyEmail, 
+  login, 
+  getMe, 
+  updateProfile, 
+  securityLogin,
+  requestPasswordReset,
+  verifyResetOtp,
+  resetPassword
+} = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -45,5 +55,34 @@ router.get('/me', authMiddleware, getMe);
 
 // @route   PUT /api/auth/profile
 router.put('/profile', authMiddleware, updateProfile);
+
+// @route   POST /api/auth/forgot-password
+router.post(
+  '/forgot-password',
+  [check('email', 'Please include a valid email').isEmail().normalizeEmail()],
+  requestPasswordReset
+);
+
+// @route   POST /api/auth/verify-reset-otp
+router.post(
+  '/verify-reset-otp',
+  [
+    check('email', 'Please include a valid email').isEmail().normalizeEmail(),
+    check('otp', 'OTP is required and must be 6 digits').isLength({ min: 6, max: 6 }).isNumeric()
+  ],
+  verifyResetOtp
+);
+
+// @route   POST /api/auth/reset-password
+router.post(
+  '/reset-password',
+  [
+    check('email', 'Please include a valid email').isEmail().normalizeEmail(),
+    check('otp', 'OTP is required and must be 6 digits').isLength({ min: 6, max: 6 }).isNumeric(),
+    check('password', 'Password must be at least 6 characters long').isLength({ min: 6 }),
+    check('confirmPassword', 'Confirm password is required').exists()
+  ],
+  resetPassword
+);
 
 module.exports = router;

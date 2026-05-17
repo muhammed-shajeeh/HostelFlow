@@ -64,6 +64,22 @@ const userSchema = new mongoose.Schema({
   emailOtpExpiry: {
     type: Date
   },
+  resetOtp: {
+    type: String
+  },
+  resetOtpExpiry: {
+    type: Date
+  },
+  resetOtpAttempts: {
+    type: Number,
+    default: 0
+  },
+  resetOtpLockUntil: {
+    type: Date
+  },
+  resetOtpLastSent: {
+    type: Date
+  },
   profileImage: {
     type: String
   },

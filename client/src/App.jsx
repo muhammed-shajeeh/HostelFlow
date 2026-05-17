@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import StudentRegister from './pages/StudentRegister';
 import VerifyOtp from './pages/VerifyOtp';
+import Landing from './pages/Landing';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminHostels from './pages/AdminHostels';
 import AdminWardens from './pages/AdminWardens';
@@ -65,6 +66,7 @@ import WardenMessManagement from './pages/WardenMessManagement';
 // Security Gate Portal
 import WardenSecurityGate from './pages/WardenSecurityGate';
 import SecurityGateDashboard from './pages/SecurityGateDashboard';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -73,12 +75,10 @@ function App() {
         <BrowserRouter>
         <Toaster position="top-right" />
         <Routes>
-          <Route element={<NavbarLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<StudentRegister />} />
-            <Route path="/verify-otp" element={<VerifyOtp />} />
-            <Route path="/" element={<div className="p-4 text-center mt-10 text-2xl font-bold">Welcome to Smart Hostel Management System</div>} />
-          </Route>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<StudentRegister />} />
+          <Route path="/verify-otp" element={<VerifyOtp />} />
 
           {/* Standalone Gatekeeper Security Terminal with integrated PIN authentication */}
           <Route path="/security" element={<SecurityGateDashboard />} />
@@ -165,10 +165,11 @@ function App() {
                 <Route path="/student/mess" element={<StudentBilling />} />
                 <Route path="/student/payments" element={<StudentBilling />} />
               </Route>
-
             </Route>
           </Route>
           
+          {/* Catch-all 404 Route */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
         </BrowserRouter>
       </SocketProvider>

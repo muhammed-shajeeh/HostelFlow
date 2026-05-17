@@ -34,7 +34,11 @@ const toObjectId = (val) => {
   if (!val) return null;
   const mongoose = require('mongoose');
   const raw = val?._id || val;
-  return new mongoose.Types.ObjectId(raw.toString());
+  try {
+    return new mongoose.Types.ObjectId(raw.toString());
+  } catch (error) {
+    return null;
+  }
 };
 
 // ──────────────────────────────────────────────────────

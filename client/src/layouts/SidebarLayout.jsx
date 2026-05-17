@@ -186,14 +186,14 @@ export default function SidebarLayout() {
                 <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
                 <NavLink to="/parent" icon={LayoutDashboard}>Dashboard</NavLink>
                 
-                {firstStudentId ? (
+                {parentStudents.length > 0 ? (
                   <>
-                    <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Monitoring</div>
-                    <NavLink to={`/parent/student/${firstStudentId}`} icon={CheckSquare}>Attendance</NavLink>
-                    <NavLink to={`/parent/student/${firstStudentId}`} icon={CreditCard}>Billing & Payments</NavLink>
-                    <NavLink to={`/parent/student/${firstStudentId}`} icon={FileText}>Leave History</NavLink>
-                    <NavLink to={`/parent/student/${firstStudentId}`} icon={AlertCircle}>Complaints</NavLink>
-                    <NavLink to={`/parent/student/${firstStudentId}`} icon={Megaphone}>Notices</NavLink>
+                    <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Linked Children</div>
+                    {parentStudents.map(student => (
+                      <NavLink key={student._id} to={`/parent/student/${student._id}`} icon={UserIcon}>
+                        {student.fullName}
+                      </NavLink>
+                    ))}
                   </>
                 ) : (
                   <div className="text-xs text-gray-500 italic p-3 text-center border border-dashed border-gray-800 rounded-xl mt-4">

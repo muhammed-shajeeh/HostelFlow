@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import api from '../api';
 import toast from 'react-hot-toast';
+import { Download } from 'lucide-react';
 
 // ── Chart color palette ──────────────────────────────
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
@@ -102,14 +103,17 @@ export default function AdminAnalytics() {
           <p className="text-sm text-gray-500 mt-1">Full platform insights — all hostels</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => exportCSV('attendance')} className="px-3 py-2 text-sm font-bold bg-white border rounded-lg hover:bg-gray-50 transition">
-            ⬇ Attendance CSV
+          <button onClick={() => exportCSV('attendance')} className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold bg-white border rounded-lg hover:bg-gray-50 text-gray-700 transition shadow-sm cursor-pointer">
+            <Download size={14} className="text-gray-400" />
+            Attendance CSV
           </button>
-          <button onClick={() => exportCSV('complaints')} className="px-3 py-2 text-sm font-bold bg-white border rounded-lg hover:bg-gray-50 transition">
-            ⬇ Complaints CSV
+          <button onClick={() => exportCSV('complaints')} className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold bg-white border rounded-lg hover:bg-gray-50 text-gray-700 transition shadow-sm cursor-pointer">
+            <Download size={14} className="text-gray-400" />
+            Complaints CSV
           </button>
-          <button onClick={() => exportCSV('leaves')} className="px-3 py-2 text-sm font-bold bg-white border rounded-lg hover:bg-gray-50 transition">
-            ⬇ Leaves CSV
+          <button onClick={() => exportCSV('leaves')} className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold bg-white border rounded-lg hover:bg-gray-50 text-gray-700 transition shadow-sm cursor-pointer">
+            <Download size={14} className="text-gray-400" />
+            Leaves CSV
           </button>
         </div>
       </div>
