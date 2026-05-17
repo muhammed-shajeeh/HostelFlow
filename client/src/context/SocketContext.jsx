@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 import toast from 'react-hot-toast';
 import api from '../api';
+import { getBaseURL } from '../utils/config';
 
 const SocketContext = createContext();
 
@@ -48,8 +49,8 @@ export const SocketProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    // Connect to backend Socket.IO server
-    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    // Connect to backend Socket.IO server dynamically
+    const socketUrl = getBaseURL();
     const newSocket = io(socketUrl, {
       auth: { token },
       reconnectionAttempts: 5,

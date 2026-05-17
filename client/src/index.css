@@ -210,3 +210,15 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #484f58;
 }
+
+/* ==========================================================================
+   MOBILE NATIVE ANDROID/IOS SAFE AREA INTEGRATIONS
+   ========================================================================== */
+header {
+  padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+}
+
+aside {
+  padding-top: calc(1rem + env(safe-area-inset-top, 0px)) !important;
+}
+

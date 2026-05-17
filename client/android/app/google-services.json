@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "339239576000",
+    "project_id": "hostelflow-56e99",
+    "storage_bucket": "hostelflow-56e99.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:339239576000:android:889162ba7191bda3862825",
+        "android_client_info": {
+          "package_name": "com.hostelflow.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxidhdxJjNNGt46ma0kds9UykW6mDcCdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

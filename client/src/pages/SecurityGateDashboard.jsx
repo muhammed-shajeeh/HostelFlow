@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { Shield, LogOut, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Lock, Delete } from 'lucide-react';
 import { Html5Qrcode } from "html5-qrcode";
+import { Capacitor } from '@capacitor/core';
+import { Camera } from '@capacitor/camera';
 
 export default function SecurityGateDashboard() {
   const { user, token, login, logout } = useContext(AuthContext);
@@ -69,7 +71,19 @@ export default function SecurityGateDashboard() {
   useEffect(() => {
     if (isSecuritySessionActive && !manualInputMode) {
       // Small timeout to guarantee element is fully rendered in the DOM before targeting
-      const initTimeout = setTimeout(() => {
+      const initTimeout = setTimeout(async () => {
+        // Natively request permission before starting HTML5 QR Code to prevent camera blockages on physical devices
+        if (Capacitor.isNativePlatform()) {
+          try {
+            const status = await Camera.checkPermissions();
+            if (status.camera !== 'granted') {
+              await Camera.requestPermissions({ permissions: ['camera'] });
+            }
+          } catch (permErr) {
+            console.warn('[Camera Permission Request Failed]', permErr);
+          }
+        }
+
         const html5QrCode = new Html5Qrcode("reader");
         qrCodeRef.current = html5QrCode;
 

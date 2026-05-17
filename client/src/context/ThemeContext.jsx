@@ -35,6 +35,21 @@ export function ThemeProvider({ children }) {
           root.style.colorScheme = 'light';
         }
       }
+
+      // Synchronize native Capacitor StatusBar style
+      import('@capacitor/core')
+        .then(({ Capacitor }) => {
+          if (Capacitor.isNativePlatform()) {
+            import('@capacitor/status-bar')
+              .then(({ StatusBar }) => {
+                const isDarkActive = root.classList.contains('dark');
+                StatusBar.setStyle({ style: isDarkActive ? 'DARK' : 'LIGHT' }).catch(() => {});
+                StatusBar.setBackgroundColor({ color: isDarkActive ? '#090d16' : '#ffffff' }).catch(() => {});
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
     };
 
     applyTheme();
