@@ -9,7 +9,7 @@ export function ThemeProvider({ children }) {
     if (stored === 'light' || stored === 'dark' || stored === 'system') {
       return stored;
     }
-    return 'light'; // Default Light Mode
+    return 'system'; // Default to System Theme Mode
   });
 
   useEffect(() => {

@@ -73,21 +73,6 @@ export default function Landing() {
 
   // Authentication Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [customIp, setCustomIp] = useState(localStorage.getItem('custom_api_ip') || '');
-  const [showIpConfig, setShowIpConfig] = useState(false);
-
-  const handleSaveIp = () => {
-    if (customIp.trim()) {
-      localStorage.setItem('custom_api_ip', customIp.trim());
-      toast.success('API Server Host IP Updated!');
-    } else {
-      localStorage.removeItem('custom_api_ip');
-      toast.success('Reset to default API configurations');
-    }
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
-  };
   const [authTab, setAuthTab] = useState('login'); // 'login' or 'signup'
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -271,37 +256,391 @@ export default function Landing() {
     { label: 'Students', icon: GraduationCap, radius: 170, angle: 308.6, color: 'text-slate-800 bg-slate-100 border-slate-200' },
   ];
 
+  const isDarkMode = 
+    theme === 'dark' || 
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const handleToggleTheme = () => {
+    toggleTheme(isDarkMode ? 'light' : 'dark');
+  };
+
+  const renderSharedAuthModal = () => {
+    if (!isAuthModalOpen) return null;
+    return (
+      <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] text-slate-900 dark:text-[#f0f6fc] rounded-2xl max-w-sm w-full p-6 space-y-6 relative shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+          
+          {/* Modal Exit */}
+          <button
+            onClick={() => { setIsAuthModalOpen(false); setRecoveryStage(null); }}
+            className="absolute top-4 right-4 p-1.5 text-slate-450 dark:text-gray-400 hover:text-slate-750 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#30363d] rounded-lg transition min-w-[32px] min-h-[32px] flex items-center justify-center cursor-pointer"
+          >
+            <X size={16} />
+          </button>
+
+          {recoveryStage === null ? (
+            <>
+              {/* Logo & Identity */}
+              <div className="text-center space-y-2 pt-1">
+                <HostelFlowLogo className="w-12 h-12 text-blue-600 dark:text-blue-500 mx-auto" />
+                <span className="block font-extrabold text-lg tracking-tight text-slate-900 dark:text-white mt-2 select-none">
+                  Hostel<span className="text-blue-600 dark:text-blue-500">Flow</span>
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white pt-1 uppercase tracking-wide">
+                  {authTab === 'login' ? 'Login to HostelFlow' : 'Sign Up'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-gray-400 font-semibold">
+                  {authTab === 'login' 
+                    ? 'Sign in to access your administrative dashboard' 
+                    : 'Register a new account on HostelFlow'
+                  }
+                </p>
+              </div>
+
+              {/* Modal Tabs */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-[#0d1117] border border-transparent dark:border-[#30363d] rounded-lg text-xs font-bold">
+                <button
+                  onClick={() => setAuthTab('login')}
+                  className={`py-2 text-center rounded-md transition select-none cursor-pointer ${
+                    authTab === 'login' 
+                      ? 'bg-white dark:bg-[#161b22] text-slate-900 dark:text-white shadow-sm font-black' 
+                      : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-250'
+                  }`}
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => setAuthTab('signup')}
+                  className={`py-2 text-center rounded-md transition select-none cursor-pointer ${
+                    authTab === 'signup' 
+                      ? 'bg-white dark:bg-[#161b22] text-slate-900 dark:text-white shadow-sm font-black' 
+                      : 'text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-250'
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
+
+              {/* Unified Forms */}
+              {authTab === 'login' ? (
+                <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs font-bold text-slate-700 dark:text-gray-300 text-left">
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-555 dark:text-gray-450 mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      placeholder="e.g. resident@hostelflow.com"
+                      className="w-full bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg p-3 text-slate-800 dark:text-white focus:outline-none focus:border-blue-600 transition placeholder:text-slate-405 dark:placeholder:text-gray-600 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider text-slate-555 dark:text-gray-450 mb-1">Password</label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg p-3 text-slate-800 dark:text-white focus:outline-none focus:border-blue-600 transition placeholder:text-slate-405 dark:placeholder:text-gray-600 font-semibold"
+                    />
+                    <div className="flex justify-between items-center text-[10px] mt-2">
+                      <span />
+                      <button
+                        type="button"
+                        onClick={handleStartRecovery}
+                        className="text-blue-600 dark:text-blue-455 hover:underline font-extrabold cursor-pointer bg-transparent border-0 p-0"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
+                  >
+                    {loading ? 'Authenticating...' : 'Login'}
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-3 pt-1 text-xs text-left">
+                  <span className="block text-[9px] uppercase tracking-wider text-slate-500 dark:text-gray-500 text-center font-bold">
+                    Select registration pathway
+                  </span>
+                  
+                  <Link
+                    to="/register"
+                    onClick={() => setIsAuthModalOpen(false)}
+                    className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg hover:border-blue-500 transition group text-left cursor-pointer"
+                  >
+                    <div>
+                      <h4 className="font-extrabold text-slate-850 dark:text-white">Resident Student Signup</h4>
+                      <p className="text-[9px] text-slate-500 dark:text-gray-400 font-semibold mt-0.5">Link hostel roll number to initiate PWA account setup</p>
+                    </div>
+                    <ArrowRight size={14} className="text-slate-400 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-500 transition-colors" />
+                  </Link>
+
+                  <div className="p-3.5 bg-slate-50/50 dark:bg-[#0d1117]/50 border border-slate-200 dark:border-[#30363d] rounded-lg text-left">
+                    <h4 className="font-extrabold text-slate-700 dark:text-gray-300">Guardians & Staff Pathways</h4>
+                    <p className="text-[9px] text-slate-500 dark:text-gray-405 font-semibold mt-0.5 leading-relaxed">
+                      Credentials allocation is automated during master administrative hostel intake. Please refer to notices sent to your registered address.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : recoveryStage === 'email' ? (
+            /* PASSWORD RECOVERY STEP 1: ENTER EMAIL */
+            <div className="space-y-5 text-left">
+              <div className="text-center">
+                <HostelFlowLogo className="w-12 h-12 text-blue-600 dark:text-blue-500 mx-auto" />
+                <span className="block font-black text-sm tracking-tight text-slate-900 dark:text-white mt-2 select-none">
+                  Hostel<span className="text-blue-600 dark:text-blue-500">Flow</span>
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white pt-1 uppercase tracking-wide">Forgot Password?</h3>
+                <p className="text-[11px] text-slate-500 dark:text-gray-400 font-semibold mt-1">Enter your email address to receive a secure recovery code</p>
+              </div>
+
+              <form onSubmit={handleRequestOtp} className="space-y-4 text-xs font-bold text-slate-700 dark:text-gray-350">
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider text-slate-500 dark:text-gray-450 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    required
+                    placeholder="e.g. resident@hostelflow.com"
+                    className="w-full bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg p-3 text-slate-800 dark:text-white focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 dark:placeholder:text-gray-650 font-semibold"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={recoveryLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
+                >
+                  {recoveryLoading ? 'Sending OTP...' : 'Send OTP'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRecoveryStage(null)}
+                  className="w-full bg-slate-100 dark:bg-[#30363d] hover:bg-slate-200 dark:hover:bg-[#484f58] text-slate-750 dark:text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                >
+                  <ArrowLeft size={14} /> Back to Login
+                </button>
+              </form>
+            </div>
+
+          ) : recoveryStage === 'otp' ? (
+            /* PASSWORD RECOVERY STEP 2: VERIFY OTP */
+            <div className="space-y-5 text-left">
+              <div className="text-center">
+                <HostelFlowLogo className="w-12 h-12 text-blue-600 dark:text-blue-500 mx-auto" />
+                <span className="block font-black text-sm tracking-tight text-slate-900 dark:text-white mt-2 select-none">
+                  Hostel<span className="text-blue-600 dark:text-blue-500">Flow</span>
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white pt-1 uppercase tracking-wide">Verify Code</h3>
+                <p className="text-[11px] text-slate-500 dark:text-gray-400 font-semibold mt-1 leading-relaxed">
+                  We sent a 6-digit verification code to <span className="text-slate-900 dark:text-white font-bold">{recoveryEmail}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleVerifyOtp} className="space-y-4 text-xs font-bold text-slate-700 dark:text-gray-350">
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider text-slate-500 dark:text-gray-450 mb-1">Verification Code (OTP)</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={recoveryOtp}
+                    onChange={(e) => setRecoveryOtp(e.target.value.replace(/\D/g, ''))}
+                    required
+                    placeholder="e.g. 123456"
+                    className="w-full bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg p-3 text-slate-800 dark:text-white focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 dark:placeholder:text-gray-655 font-bold text-center text-sm tracking-[0.2em]"
+                  />
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-gray-450">
+                  <span>Didn't receive the code?</span>
+                  {resendCooldown > 0 ? (
+                    <span className="font-bold text-slate-400 dark:text-gray-500">Resend OTP in {resendCooldown}s</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleRequestOtp}
+                      className="text-blue-650 dark:text-blue-455 hover:underline font-bold bg-transparent border-0 p-0 cursor-pointer"
+                    >
+                      Resend Code
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={recoveryLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
+                >
+                  {recoveryLoading ? 'Verifying...' : 'Verify Code'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRecoveryStage('email')}
+                  className="w-full bg-slate-100 dark:bg-[#30363d] hover:bg-slate-200 dark:hover:bg-[#484f58] text-slate-750 dark:text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                >
+                  <ArrowLeft size={14} /> Back
+                </button>
+              </form>
+            </div>
+
+          ) : recoveryStage === 'reset' ? (
+            /* PASSWORD RECOVERY STEP 3: CREATE NEW PASSWORD */
+            <div className="space-y-5 text-left">
+              <div className="text-center">
+                <HostelFlowLogo className="w-12 h-12 text-blue-600 dark:text-blue-500 mx-auto" />
+                <span className="block font-black text-sm tracking-tight text-slate-900 dark:text-white mt-2 select-none">
+                  Hostel<span className="text-blue-600 dark:text-blue-500">Flow</span>
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white pt-1 uppercase tracking-wide">Reset Password</h3>
+                <p className="text-[11px] text-slate-500 dark:text-gray-400 font-semibold mt-1">Create a secure new password for your account</p>
+              </div>
+
+              <form onSubmit={handleResetPassword} className="space-y-4 text-xs font-bold text-slate-700 dark:text-gray-350">
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider text-slate-500 dark:text-gray-450 mb-1">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showRecoveryPassword ? 'text' : 'password'}
+                      value={recoveryPassword}
+                      onChange={(e) => setRecoveryPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg p-3 pr-10 text-slate-800 dark:text-white focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 dark:placeholder:text-gray-655 font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRecoveryPassword(!showRecoveryPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-755 p-0.5"
+                    >
+                      {showRecoveryPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+
+                  {/* Password Strength Indicator */}
+                  {recoveryPassword && (
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1 bg-slate-100 dark:bg-[#0d1117] rounded-full overflow-hidden flex">
+                        <div className={`h-full transition-all duration-300 ${strength.color}`} />
+                      </div>
+                      <div className="flex justify-between text-[9px] font-bold">
+                        <span className="text-slate-400 dark:text-gray-500">Strength:</span>
+                        <span className={strength.textClass}>{strength.label}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-[9px] uppercase tracking-wider text-slate-500 dark:text-gray-455 mb-1">Confirm Password</label>
+                  <div className="relative">
+                    <input
+                      type={showRecoveryConfirmPassword ? 'text' : 'password'}
+                      value={recoveryConfirmPassword}
+                      onChange={(e) => setRecoveryConfirmPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg p-3 pr-10 text-slate-800 dark:text-white focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 dark:placeholder:text-gray-655 font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRecoveryConfirmPassword(!showRecoveryConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-755 p-0.5"
+                    >
+                      {showRecoveryConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={recoveryLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
+                >
+                  {recoveryLoading ? 'Updating...' : 'Reset Password'}
+                </button>
+              </form>
+            </div>
+
+          ) : (
+            /* PASSWORD RECOVERY STEP 4: SUCCESS CONFIRMATION */
+            <div className="space-y-6 text-center">
+              <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/20 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/40 mx-auto shadow-sm">
+                <CheckCircle2 className="w-8 h-8 stroke-[2]" />
+              </div>
+
+              <div className="space-y-2">
+                <HostelFlowLogo className="w-12 h-12 text-blue-600 dark:text-blue-500 mx-auto" />
+                <span className="block font-black text-sm tracking-tight text-slate-900 dark:text-white mt-2 select-none">
+                  Hostel<span className="text-blue-600 dark:text-blue-500">Flow</span>
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-wide">Password Updated</h3>
+                <p className="text-[11px] text-slate-500 dark:text-gray-405 font-semibold leading-relaxed max-w-xs mx-auto">
+                  Your security credentials have been successfully updated. You can now log in using your new password.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setRecoveryStage(null)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
+              >
+                Back to Login
+              </button>
+            </div>
+          )}
+
+        </div>
+      </div>
+    );
+  };
+
   const isNative = Capacitor.isNativePlatform();
 
   if (isNative) {
     return (
-      <div className="min-h-screen bg-[#090d16] text-[#f0f6fc] font-sans flex flex-col justify-between p-6 relative overflow-hidden safe-top-padding">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0d1117] text-slate-900 dark:text-[#f0f6fc] font-sans flex flex-col justify-between p-6 relative overflow-hidden safe-top-padding">
         {/* Ambient background glow */}
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-[120px] pointer-events-none" />
 
         {/* Top Header/Toggle */}
         <div className="flex justify-between items-center z-10 w-full">
           <div className="flex items-center gap-2">
-            <HostelFlowLogo className="w-8 h-8 text-blue-500" />
+            <HostelFlowLogo className="w-8 h-8 text-blue-600 dark:text-blue-500" />
             <span className="font-extrabold text-lg tracking-tight">HostelFlow</span>
           </div>
           <button
-            onClick={() => toggleTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2.5 bg-[#161b22] hover:bg-[#30363d] border border-[#30363d] rounded-xl text-gray-400 transition"
+            onClick={handleToggleTheme}
+            className="p-2.5 bg-white dark:bg-[#161b22] hover:bg-slate-100 dark:hover:bg-[#30363d] border border-slate-200 dark:border-[#30363d] rounded-xl text-slate-500 dark:text-gray-400 transition cursor-pointer"
+            title="Toggle Theme"
           >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
           </button>
         </div>
 
         {/* Center Section: App Branding & Hero Onboarding */}
         <div className="flex-1 flex flex-col justify-center items-center text-center max-w-sm mx-auto space-y-8 z-10 py-10">
-          <div className="w-20 h-20 bg-[#161b22] border border-[#30363d] rounded-3xl flex items-center justify-center shadow-2xl animate-pulse">
-            <HostelFlowLogo className="w-12 h-12 text-blue-500" />
+          <div className="w-20 h-20 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-3xl flex items-center justify-center shadow-2xl animate-pulse">
+            <HostelFlowLogo className="w-12 h-12 text-blue-600 dark:text-blue-500" />
           </div>
           <div className="space-y-3">
             <h1 className="text-3xl font-extrabold tracking-tight">HostelFlow</h1>
-            <p className="text-xs text-gray-400 leading-relaxed font-semibold">
+            <p className="text-xs text-slate-550 dark:text-gray-400 leading-relaxed font-semibold">
               Secure institutional hostel portal for leave tracking, outpass codes, mess billing, and real-time alerts.
             </p>
           </div>
@@ -324,170 +663,54 @@ export default function Landing() {
                 </button>
                 <Link
                   to="/register"
-                  className="w-full bg-[#161b22] hover:bg-[#30363d] border border-[#30363d] text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-xs"
+                  className="w-full bg-white dark:bg-[#161b22] hover:bg-slate-100 dark:hover:bg-[#30363d] border border-slate-200 dark:border-[#30363d] text-slate-800 dark:text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-xs"
                 >
-                  Onboard Resident Student
+                  Register New Student Account
                 </Link>
               </>
             )}
           </div>
         </div>
 
-        {/* Bottom Section: API Configurer & Footer */}
+        {/* Bottom Section: Footer */}
         <div className="z-10 w-full max-w-sm mx-auto space-y-4">
-          <div className="border-t border-[#30363d] pt-4 text-center">
-            <button
-              onClick={() => setShowIpConfig(!showIpConfig)}
-              className="text-[10px] text-gray-500 hover:text-blue-450 font-bold flex items-center justify-center gap-1.5 mx-auto transition cursor-pointer"
-            >
-              ⚙️ Configure API Server Host
-            </button>
-          </div>
-
-          {showIpConfig && (
-            <div className="bg-[#161b22] border border-[#30363d] p-3.5 rounded-xl space-y-2.5 animate-fadeIn text-left">
-              <label className="block text-[8px] uppercase tracking-wider text-gray-500 font-black">
-                Local Server IP / Host (WiFi Testing)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customIp}
-                  onChange={(e) => setCustomIp(e.target.value)}
-                  placeholder="e.g. 192.168.1.15"
-                  className="flex-1 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 font-bold"
-                />
-                <button
-                  type="button"
-                  onClick={handleSaveIp}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition cursor-pointer"
-                >
-                  Save
-                </button>
-              </div>
-              <p className="text-[8px] text-gray-500 leading-normal font-semibold">
-                Allows connecting to your local server over standard hotspot/WiFi. Leave blank to use default hosts.
-              </p>
-            </div>
-          )}
-
-          <div className="text-center text-[9px] text-gray-600 font-semibold pb-2">
+          <div className="text-center text-[9px] text-slate-400 dark:text-gray-600 font-semibold pb-2 border-t border-slate-200 dark:border-[#30363d] pt-4">
             &copy; 2026 HostelFlow. Hardened App Build.
           </div>
         </div>
 
         {/* Modal Injector */}
-        {isAuthModalOpen && (
-          <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-[#161b22] border border-[#30363d] text-[#f0f6fc] rounded-2xl max-w-sm w-full p-6 space-y-6 relative shadow-2xl max-h-[90vh] overflow-y-auto">
-              <button
-                onClick={() => setIsAuthModalOpen(false)}
-                className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-white hover:bg-[#30363d] rounded-lg transition cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center"
-              >
-                <X size={16} />
-              </button>
-
-              <div className="text-center space-y-2 pt-1">
-                <HostelFlowLogo className="w-12 h-12 text-blue-500 mx-auto" />
-                <span className="block font-extrabold text-lg tracking-tight mt-2">HostelFlow</span>
-                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 pt-1">
-                  {authTab === 'login' ? 'Sign In' : 'Sign Up'}
-                </h3>
-              </div>
-
-              {authTab === 'login' ? (
-                <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs font-bold text-gray-405 text-left">
-                  <div>
-                    <label className="block text-[8px] uppercase tracking-wider text-gray-500 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      placeholder="resident@hostelflow.app"
-                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition placeholder:text-gray-600 font-semibold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] uppercase tracking-wider text-gray-500 mb-1">Password</label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      required
-                      placeholder="••••••••"
-                      className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition placeholder:text-gray-600 font-semibold"
-                    />
-                    <div className="flex justify-end mt-2">
-                      <button
-                        type="button"
-                        onClick={handleStartRecovery}
-                        className="text-blue-455 hover:underline text-[9px] font-bold cursor-pointer bg-transparent border-0 p-0"
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/10 cursor-pointer text-xs"
-                  >
-                    {loading ? 'Authenticating...' : 'Sign In'}
-                  </button>
-                </form>
-              ) : (
-                <div className="space-y-3 pt-1 text-xs text-left">
-                  <Link
-                    to="/register"
-                    onClick={() => setIsAuthModalOpen(false)}
-                    className="flex items-center justify-between p-4 bg-[#0d1117] border border-[#30363d] rounded-xl hover:border-blue-500 transition group text-left cursor-pointer"
-                  >
-                    <div>
-                      <h4 className="font-extrabold text-white">Student Resident Signup</h4>
-                      <p className="text-[9px] text-gray-500 font-semibold mt-0.5">Submit your onboarding applications live</p>
-                    </div>
-                    <ArrowRight size={14} className="text-gray-400 group-hover:text-blue-500 transition-colors" />
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {renderSharedAuthModal()}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0d1117] text-slate-800 dark:text-[#f0f6fc] font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between overflow-x-hidden">
       
       {/* Top Navbar */}
-      <header className="relative border-b border-slate-200 bg-white/95 backdrop-blur-md z-40 sticky top-0 shadow-sm">
+      <header className="relative border-b border-slate-200 dark:border-[#30363d] bg-white/95 dark:bg-[#161b22]/95 backdrop-blur-md z-40 sticky top-0 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           
           {/* Left Side: Brand Logo & Title */}
           <div className="flex items-center gap-3">
-            <HostelFlowLogo className="w-10 h-10 text-blue-600" />
-            <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-slate-900 flex items-center gap-1.5 select-none">
-              Hostel<span className="text-blue-600">Flow</span>
+            <HostelFlowLogo className="w-10 h-10 text-blue-600 dark:text-blue-500" />
+            <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 select-none">
+              Hostel<span className="text-blue-600 dark:text-blue-500">Flow</span>
             </span>
           </div>
 
           {/* Desktop Onboarding Menu */}
           <nav className="hidden md:flex items-center gap-4">
             {user ? (
-              <div className="flex items-center gap-3.5 bg-slate-100/80 border border-slate-200 pl-4 pr-2.5 py-1.5 rounded-full">
+              <div className="flex items-center gap-3.5 bg-slate-100/80 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] pl-4 pr-2.5 py-1.5 rounded-full">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black uppercase shadow-inner">
                     {getInitials(user.fullName)}
                   </div>
-                  <span className="text-sm font-semibold text-slate-700">Welcome back, {user.fullName.split(' ')[0]}</span>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-gray-300">Welcome back, {user.fullName.split(' ')[0]}</span>
                 </div>
-                <div className="w-[1px] h-4 bg-slate-200" />
+                <div className="w-[1px] h-4 bg-slate-200 dark:bg-[#30363d]" />
                 <Link
                   to={getDashboardRoute()}
                   className="flex items-center gap-1 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold transition shadow-sm"
@@ -506,7 +729,7 @@ export default function Landing() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => { setAuthTab('login'); setIsAuthModalOpen(true); }}
-                  className="px-5 py-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                  className="px-5 py-2 text-sm font-bold text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                 >
                   Login
                 </button>
@@ -520,22 +743,22 @@ export default function Landing() {
             )}
             {/* Theme Switcher Toggle */}
             <button
-              onClick={() => toggleTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer ml-1"
+              onClick={handleToggleTheme}
+              className="p-2 rounded-xl text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-[#30363d] transition cursor-pointer ml-1"
               title="Toggle Theme"
             >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </nav>
 
           {/* Mobile Hamburger Toggle */}
           <div className="flex items-center gap-1 md:hidden">
             <button
-              onClick={() => toggleTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              onClick={handleToggleTheme}
+              className="p-2 rounded-xl text-slate-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-[#30363d] transition cursor-pointer"
               title="Toggle Theme"
             >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -548,16 +771,16 @@ export default function Landing() {
 
         {/* Mobile Dropdown Panel */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-b border-slate-200 bg-white p-4 space-y-2.5">
+          <div className="md:hidden border-b border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] p-4 space-y-2.5">
             {user ? (
               <div className="space-y-2">
-                <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-[#0d1117] rounded-xl">
                   <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-black uppercase text-white">
                     {getInitials(user.fullName)}
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-800">{user.fullName}</h4>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">{user.role}</p>
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-white">{user.fullName}</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-gray-400 font-bold uppercase">{user.role}</p>
                   </div>
                 </div>
                 <Link
@@ -569,7 +792,7 @@ export default function Landing() {
                 </Link>
                 <button
                   onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
-                  className="flex items-center justify-center gap-2 w-full py-2 bg-slate-100 hover:bg-slate-200 text-red-600 rounded-lg text-xs font-bold transition border border-slate-200"
+                  className="flex items-center justify-center gap-2 w-full py-2 bg-slate-100 dark:bg-[#30363d] hover:bg-slate-200 dark:hover:bg-[#484f58] text-red-600 rounded-lg text-xs font-bold transition border border-slate-200 dark:border-[#30363d]"
                 >
                   <LogOut size={12} />
                   Logout Session
@@ -579,7 +802,7 @@ export default function Landing() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => { setMobileMenuOpen(false); setAuthTab('login'); setIsAuthModalOpen(true); }}
-                  className="py-2.5 text-center bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition"
+                  className="py-2.5 text-center bg-slate-100 dark:bg-[#30363d] hover:bg-slate-200 dark:hover:bg-[#484f58] rounded-lg text-xs font-bold text-slate-700 dark:text-gray-300 transition cursor-pointer"
                 >
                   Login
                 </button>
@@ -598,16 +821,16 @@ export default function Landing() {
       {/* Main Hero Grid */}
       <main className="flex-1 max-w-7xl mx-auto px-6 py-12 md:py-16 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center w-full relative">
         
-        {/* Left Side: Professional Institutional Headline (Phase 1 Alignment & Phase 3 Scaling) */}
+        {/* Left Side: Headline */}
         <section className="lg:col-span-6 space-y-6 text-left flex flex-col justify-center">
           
-          <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-extrabold tracking-tight text-slate-900 leading-[1.08] lg:leading-[1.12]">
+          <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.08] lg:leading-[1.12]">
             Hostel Management <br />
-            <span className="text-blue-600">Software</span> for Universities, <br />
+            <span className="text-blue-600 dark:text-blue-500">Software</span> for Universities, <br />
             Colleges & Schools
           </h1>
 
-          <p className="text-base sm:text-lg lg:text-xl text-slate-500 leading-relaxed font-normal max-w-2xl">
+          <p className="text-base sm:text-lg lg:text-xl text-slate-500 dark:text-gray-400 leading-relaxed font-normal max-w-2xl">
             Centralized hostel operations platform for attendance, leave management, mess billing, security verification, analytics, and parent monitoring.
           </p>
 
@@ -632,25 +855,25 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Right Side: Multi-Ring Symmetrical Infographic matching the concentric layout sketch */}
+        {/* Right Side: Multi-Ring Symmetrical Infographic */}
         <section className="lg:col-span-6 w-full flex justify-center items-center py-4">
           <div className="relative w-[380px] h-[380px] sm:w-[460px] sm:h-[460px] lg:w-[490px] lg:h-[490px] flex items-center justify-center select-none">
             
-            {/* Inner Decorative Accent Ring (Radius 110px, Diameter 220px) */}
-            <div className="absolute w-[220px] h-[220px] rounded-full border border-dashed border-blue-200/40 pointer-events-none" />
+            {/* Inner Decorative Accent Ring */}
+            <div className="absolute w-[220px] h-[220px] rounded-full border border-dashed border-blue-200/40 dark:border-blue-500/20 pointer-events-none" />
             
-            {/* Main Single Orbital Path Ring (Radius 170px, Diameter 340px) */}
-            <div className="absolute w-[340px] h-[340px] rounded-full border border-dashed border-blue-200/80 pointer-events-none" />
+            {/* Main Single Orbital Path Ring */}
+            <div className="absolute w-[340px] h-[340px] rounded-full border border-dashed border-blue-200/80 dark:border-blue-500/40 pointer-events-none" />
 
-            {/* Central Circle Node: Student Accommodation with the custom wooden bed illustration */}
-            <div className="z-10 w-36 h-36 sm:w-40 sm:h-40 bg-white rounded-full border border-slate-200/80 shadow-md flex flex-col items-center justify-center text-center p-3 hover:shadow-lg transition-all duration-300">
+            {/* Central Circle Node: Student Accommodation */}
+            <div className="z-10 w-36 h-36 sm:w-40 sm:h-40 bg-white dark:bg-[#161b22] rounded-full border border-slate-200/80 dark:border-[#30363d] shadow-md flex flex-col items-center justify-center text-center p-3 hover:shadow-lg transition-all duration-300">
               <div className="w-18 h-10 flex items-center justify-center mb-1">
                 <CenterBedIllustration />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-black text-slate-800 uppercase tracking-wider leading-tight">
+              <span className="text-[10px] sm:text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-wider leading-tight">
                 Student
               </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 leading-tight">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-gray-400 leading-tight">
                 Accommodation
               </span>
             </div>
@@ -671,11 +894,11 @@ export default function Landing() {
                   className="absolute z-20 flex flex-col items-center group"
                 >
                   {/* Round Node Icon Container */}
-                  <div className={`w-11 h-11 sm:w-13 sm:h-13 bg-white border border-slate-200 rounded-full flex items-center justify-center shadow-sm group-hover:border-blue-400 group-hover:scale-110 transition-all duration-300 cursor-pointer ${node.color.split(' ')[0]}`}>
+                  <div className={`w-11 h-11 sm:w-13 sm:h-13 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-full flex items-center justify-center shadow-sm group-hover:border-blue-450 dark:group-hover:border-blue-500 group-hover:scale-110 transition-all duration-300 cursor-pointer ${node.color.split(' ')[0]}`}>
                     <Icon className="w-5.5 h-5.5 sm:w-6.5 sm:h-6.5 stroke-[2]" />
                   </div>
-                  {/* Node Label underneath the icon with NO border boxes, clean text style */}
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-600 text-center tracking-tight leading-tight mt-1.5 select-none whitespace-nowrap group-hover:text-blue-600 transition-colors">
+                  {/* Node Label underneath the icon */}
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-600 dark:text-gray-400 text-center tracking-tight leading-tight mt-1.5 select-none whitespace-nowrap group-hover:text-blue-600 dark:group-hover:text-blue-500 transition-colors">
                     {node.label}
                   </span>
                 </div>
@@ -688,354 +911,14 @@ export default function Landing() {
       </main>
 
       {/* Clean institutional footer strip */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-[10px] text-slate-400 z-10 w-full">
+      <footer className="border-t border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] py-6 text-center text-[10px] text-slate-400 dark:text-gray-500 z-10 w-full">
         <div className="max-w-7xl mx-auto px-6 flex justify-center items-center">
           <div>&copy; 2026 HostelFlow. All rights reserved.</div>
         </div>
       </footer>
 
-      {/* Unified Professional Authentication Modal (Phase 6 Wording Cleanup) */}
-      {isAuthModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-sm w-full p-6 space-y-6 relative shadow-xl max-h-[90vh] overflow-y-auto">
-            
-            {/* Modal Exit */}
-            <button
-              onClick={() => setIsAuthModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center"
-            >
-              <X size={16} />
-            </button>
-
-            {recoveryStage === null ? (
-              <>
-                {/* Logo & Identity */}
-                <div className="text-center space-y-2 pt-1">
-                  <HostelFlowLogo className="w-12 h-12 text-blue-600 mx-auto" />
-                  <span className="block font-extrabold text-lg tracking-tight text-slate-900 mt-2 select-none">
-                    Hostel<span className="text-blue-600">Flow</span>
-                  </span>
-                  <h3 className="text-base font-extrabold text-slate-900 pt-1 uppercase tracking-wide">
-                    {authTab === 'login' ? 'Login to HostelFlow' : 'Sign Up'}
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-semibold">
-                    {authTab === 'login' 
-                      ? 'Sign in to access your administrative dashboard' 
-                      : 'Register a new account on HostelFlow'
-                    }
-                  </p>
-                </div>
-
-                {/* Modal Tabs */}
-                <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg text-xs font-bold">
-                  <button
-                    onClick={() => setAuthTab('login')}
-                    className={`py-2 text-center rounded-md transition select-none cursor-pointer ${
-                      authTab === 'login' 
-                        ? 'bg-white text-slate-900 shadow-sm' 
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Login
-                  </button>
-                  <button
-                    onClick={() => setAuthTab('signup')}
-                    className={`py-2 text-center rounded-md transition select-none cursor-pointer ${
-                      authTab === 'signup' 
-                        ? 'bg-white text-slate-900 shadow-sm' 
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Sign Up
-                  </button>
-                </div>
-
-                {/* Unified Forms */}
-                {authTab === 'login' ? (
-                  <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs font-bold text-slate-700">
-                    <div>
-                      <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Email Address</label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        placeholder="e.g. resident@hostelflow.com"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-800 focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 font-semibold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Password</label>
-                      <input
-                        type="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        placeholder="••••••••"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-800 focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 font-semibold"
-                      />
-                      <div className="flex justify-between items-center text-[10px] mt-2">
-                        <span />
-                        <button
-                          type="button"
-                          onClick={handleStartRecovery}
-                          className="text-blue-600 hover:underline font-extrabold cursor-pointer bg-transparent border-0 p-0"
-                        >
-                          Forgot Password?
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
-                    >
-                      {loading ? 'Authenticating...' : 'Login'}
-                    </button>
-                  </form>
-                ) : (
-                  <div className="space-y-3 pt-1 text-xs">
-                    <span className="block text-[9px] uppercase tracking-wider text-slate-500 text-center font-bold">
-                      Select registration pathway
-                    </span>
-                    
-                    <Link
-                      to="/register"
-                      onClick={() => setIsAuthModalOpen(false)}
-                      className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-lg hover:border-blue-500 transition group text-left cursor-pointer"
-                    >
-                      <div>
-                        <h4 className="font-extrabold text-slate-850">Resident Student Signup</h4>
-                        <p className="text-[9px] text-slate-500 font-semibold mt-0.5">Link hostel roll number to initiate PWA account setup</p>
-                      </div>
-                      <ArrowRight size={14} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-                    </Link>
-
-                    <div className="p-3.5 bg-slate-50/50 border border-slate-200 rounded-lg text-left">
-                      <h4 className="font-extrabold text-slate-700">Guardians & Staff Pathways</h4>
-                      <p className="text-[9px] text-slate-500 font-semibold mt-0.5 leading-relaxed">
-                        Credentials allocation is automated during master administrative hostel intake. Please refer to notices sent to your registered address.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : recoveryStage === 'email' ? (
-              /* PASSWORD RECOVERY STEP 1: ENTER EMAIL */
-              <div className="space-y-5">
-                <div className="text-center">
-                  <HostelFlowLogo className="w-12 h-12 text-blue-600 mx-auto" />
-                  <span className="block font-black text-sm tracking-tight text-slate-900 mt-2 select-none">
-                    Hostel<span className="text-blue-600">Flow</span>
-                  </span>
-                  <h3 className="text-base font-extrabold text-slate-900 pt-1 uppercase tracking-wide">Forgot Password?</h3>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-1">Enter your email address to receive a secure recovery code</p>
-                </div>
-
-                <form onSubmit={handleRequestOtp} className="space-y-4 text-xs font-bold text-slate-700">
-                  <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      value={recoveryEmail}
-                      onChange={(e) => setRecoveryEmail(e.target.value)}
-                      required
-                      placeholder="e.g. resident@hostelflow.com"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-800 focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 font-semibold"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={recoveryLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
-                  >
-                    {recoveryLoading ? 'Sending OTP...' : 'Send OTP'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRecoveryStage(null)}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-750 py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
-                  >
-                    <ArrowLeft size={14} /> Back to Login
-                  </button>
-                </form>
-              </div>
-
-            ) : recoveryStage === 'otp' ? (
-              /* PASSWORD RECOVERY STEP 2: VERIFY OTP */
-              <div className="space-y-5">
-                <div className="text-center">
-                  <HostelFlowLogo className="w-12 h-12 text-blue-600 mx-auto" />
-                  <span className="block font-black text-sm tracking-tight text-slate-900 mt-2 select-none">
-                    Hostel<span className="text-blue-600">Flow</span>
-                  </span>
-                  <h3 className="text-base font-extrabold text-slate-900 pt-1 uppercase tracking-wide">Verify Code</h3>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-1 leading-relaxed">
-                    We sent a 6-digit verification code to <span className="text-slate-900 font-bold">{recoveryEmail}</span>
-                  </p>
-                </div>
-
-                <form onSubmit={handleVerifyOtp} className="space-y-4 text-xs font-bold text-slate-700">
-                  <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Verification Code (OTP)</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={recoveryOtp}
-                      onChange={(e) => setRecoveryOtp(e.target.value.replace(/\D/g, ''))}
-                      required
-                      placeholder="e.g. 123456"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-800 focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 font-bold text-center text-sm tracking-[0.2em]"
-                    />
-                  </div>
-
-                  <div className="flex justify-between items-center text-[10px] text-slate-500">
-                    <span>Didn't receive the code?</span>
-                    {resendCooldown > 0 ? (
-                      <span className="font-bold text-slate-400">Resend OTP in {resendCooldown}s</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleRequestOtp}
-                        className="text-blue-650 hover:underline font-bold bg-transparent border-0 p-0 cursor-pointer"
-                      >
-                        Resend Code
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={recoveryLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
-                  >
-                    {recoveryLoading ? 'Verifying...' : 'Verify Code'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRecoveryStage('email')}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-750 py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
-                  >
-                    <ArrowLeft size={14} /> Back
-                  </button>
-                </form>
-              </div>
-
-            ) : recoveryStage === 'reset' ? (
-              /* PASSWORD RECOVERY STEP 3: CREATE NEW PASSWORD */
-              <div className="space-y-5">
-                <div className="text-center">
-                  <HostelFlowLogo className="w-12 h-12 text-blue-600 mx-auto" />
-                  <span className="block font-black text-sm tracking-tight text-slate-900 mt-2 select-none">
-                    Hostel<span className="text-blue-600">Flow</span>
-                  </span>
-                  <h3 className="text-base font-extrabold text-slate-900 pt-1 uppercase tracking-wide">Reset Password</h3>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-1">Create a secure new password for your account</p>
-                </div>
-
-                <form onSubmit={handleResetPassword} className="space-y-4 text-xs font-bold text-slate-700">
-                  <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showRecoveryPassword ? 'text' : 'password'}
-                        value={recoveryPassword}
-                        onChange={(e) => setRecoveryPassword(e.target.value)}
-                        required
-                        placeholder="••••••••"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 pr-10 text-slate-800 focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 font-semibold"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRecoveryPassword(!showRecoveryPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-750 p-0.5"
-                      >
-                        {showRecoveryPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-
-                    {/* Password Strength Indicator */}
-                    {recoveryPassword && (
-                      <div className="mt-2 space-y-1">
-                        <div className="h-1 bg-slate-100 rounded-full overflow-hidden flex">
-                          <div className={`h-full transition-all duration-300 ${strength.color}`} />
-                        </div>
-                        <div className="flex justify-between text-[9px] font-bold">
-                          <span className="text-slate-400">Strength:</span>
-                          <span className={strength.textClass}>{strength.label}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Confirm Password</label>
-                    <div className="relative">
-                      <input
-                        type={showRecoveryConfirmPassword ? 'text' : 'password'}
-                        value={recoveryConfirmPassword}
-                        onChange={(e) => setRecoveryConfirmPassword(e.target.value)}
-                        required
-                        placeholder="••••••••"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 pr-10 text-slate-800 focus:outline-none focus:border-blue-600 transition placeholder:text-slate-400 font-semibold"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowRecoveryConfirmPassword(!showRecoveryConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-750 p-0.5"
-                      >
-                        {showRecoveryConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={recoveryLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
-                  >
-                    {recoveryLoading ? 'Updating...' : 'Reset Password'}
-                  </button>
-                </form>
-              </div>
-
-            ) : (
-              /* PASSWORD RECOVERY STEP 4: SUCCESS CONFIRMATION */
-              <div className="space-y-6 text-center">
-                <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 mx-auto shadow-sm">
-                  <CheckCircle2 className="w-8 h-8 stroke-[2]" />
-                </div>
-
-                <div className="space-y-2">
-                  <HostelFlowLogo className="w-12 h-12 text-blue-600 mx-auto" />
-                  <span className="block font-black text-sm tracking-tight text-slate-900 mt-2 select-none">
-                    Hostel<span className="text-blue-600">Flow</span>
-                  </span>
-                  <h3 className="text-base font-extrabold text-slate-900 uppercase tracking-wide">Password Updated</h3>
-                  <p className="text-[11px] text-slate-500 font-semibold leading-relaxed max-w-xs mx-auto">
-                    Your security credentials have been successfully updated. You can now log in using your new password.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setRecoveryStage(null)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-xs"
-                >
-                  Back to Login
-                </button>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
+      {/* Unified Professional Authentication Modal */}
+      {renderSharedAuthModal()}
 
     </div>
   );

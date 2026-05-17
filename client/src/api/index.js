@@ -7,11 +7,6 @@ const getBaseURL = () => {
     return import.meta.env.VITE_API_URL;
   }
   
-  const savedIp = localStorage.getItem('custom_api_ip');
-  if (savedIp) {
-    return `http://${savedIp}:5000/api`;
-  }
-  
   if (Capacitor.isNativePlatform()) {
     // Falls back to standard local emulator host loopback interface
     return 'http://10.0.2.2:5000/api';

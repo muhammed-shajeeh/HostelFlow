@@ -52,8 +52,6 @@ export const SocketProvider = ({ children }) => {
     // Connect to backend Socket.IO server
     const getSocketUrl = () => {
       if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-      const savedIp = localStorage.getItem('custom_api_ip');
-      if (savedIp) return `http://${savedIp}:5000`;
       if (Capacitor.isNativePlatform()) return 'http://10.0.2.2:5000';
       return 'http://localhost:5000';
     };

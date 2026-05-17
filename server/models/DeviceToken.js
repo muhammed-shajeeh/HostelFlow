@@ -32,8 +32,7 @@ const deviceTokenSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Ensure lightning fast lookups by token and userId
-deviceTokenSchema.index({ fcmToken: 1 });
+// Ensure lightning fast lookups by userId
 deviceTokenSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('DeviceToken', deviceTokenSchema);
