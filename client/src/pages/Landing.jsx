@@ -219,8 +219,7 @@ export default function Landing() {
   };
 
   const handleLogout = () => {
-    if (logout) logout();
-    toast.success('Logged out successfully');
+    if (logout) logout('manual');
     navigate('/');
   };
 

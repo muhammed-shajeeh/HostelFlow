@@ -26,9 +26,9 @@ export default function ChangePassword() {
       await api.put('/parent/change-password', { newPassword });
       toast.success('Password updated successfully! Please login again.');
       
-      // Force logout to re-authenticate with new password
+      // Force silent logout to re-authenticate with new password cleanly
       setTimeout(() => {
-        logout();
+        logout('silent');
         navigate('/login');
       }, 2000);
     } catch (error) {

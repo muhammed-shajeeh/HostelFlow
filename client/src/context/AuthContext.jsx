@@ -4,6 +4,9 @@ import toast from 'react-hot-toast';
 
 export const AuthContext = createContext();
 
+// Module-level lock to completely eliminate asynchronous racing and cascading logout loops
+let isLoggingOut = false;
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
@@ -23,11 +26,11 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const handleUnauthorized = () => {
-      logout();
+      logout('expired');
     };
     window.addEventListener('erp:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('erp:unauthorized', handleUnauthorized);
-  }, []);
+  }, [token]);
 
   // Fetch current user if token exists (background refresh if session was already hydrated)
   useEffect(() => {
@@ -48,7 +51,7 @@ export const AuthProvider = ({ children }) => {
             console.warn("[Auth Context] Operating in offline/cached session mode due to server unreachability.");
           } else {
             // Actual authorization rejection/expiration - trigger logout safely
-            logout();
+            logout('expired');
           }
         }
       }
@@ -75,7 +78,14 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
-  const logout = () => {
+  const logout = (mode = 'manual') => {
+    if (isLoggingOut) return;
+
+    const hasToken = localStorage.getItem('token') || token;
+    if (!hasToken) return;
+
+    isLoggingOut = true;
+
     import('../utils/pushManager')
       .then(({ deregisterPushNotifications }) => {
         deregisterPushNotifications();
@@ -86,7 +96,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
-    toast.success('Logged out successfully');
+
+    // Standardize all auth-related toast behavior and eliminate duplicate overlays
+    if (mode === 'manual') {
+      toast.success('Logged out successfully');
+    } else if (mode === 'expired') {
+      toast.error('Session expired. Please login again.');
+    }
+
+    // Release locking mechanism after DOM transitions settle
+    setTimeout(() => {
+      isLoggingOut = false;
+    }, 1000);
   };
 
   return (
