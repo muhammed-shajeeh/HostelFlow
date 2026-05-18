@@ -4,6 +4,7 @@ import { AuthContext } from './AuthContext';
 import toast from 'react-hot-toast';
 import api from '../api';
 import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 const SocketContext = createContext();
 
@@ -111,8 +112,10 @@ export const SocketProvider = ({ children }) => {
     const socketUrl = getSocketUrl();
     const newSocket = io(socketUrl, {
       auth: { token },
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5
     });
 
     newSocket.on('connect', () => {
@@ -127,7 +130,11 @@ export const SocketProvider = ({ children }) => {
 
     // Listen to real-time notifications
     newSocket.on('NEW_NOTIFICATION', (notification) => {
-      setNotifications(prev => [notification, ...prev]);
+      setNotifications(prev => {
+        // Prevent duplicate notifications in active local state
+        if (prev.some(n => n._id === notification._id)) return prev;
+        return [notification, ...prev];
+      });
       setUnreadCount(prev => prev + 1);
       fetchBadgeSummary(); // Sync real-time badge counts
 
@@ -173,9 +180,42 @@ export const SocketProvider = ({ children }) => {
       fetchBadgeSummary();
     });
 
+    // Online transition listener to force reconnect instantly when network returns
+    const handleNetworkOnline = () => {
+      console.log('[Socket.IO Client] Network status transitioned ONLINE. Forcing socket reconnect...');
+      if (newSocket && !newSocket.connected) {
+        newSocket.connect();
+        fetchNotifications();
+        fetchBadgeSummary();
+      }
+    };
+    window.addEventListener('online', handleNetworkOnline);
+
+    // Capacitor Native appStateChange foreground/resume listener
+    let appStateListener = null;
+    if (Capacitor.isNativePlatform()) {
+      try {
+        appStateListener = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+          console.log(`[Socket.IO Client] Capacitor app state changed. isActive: ${isActive}`);
+          if (isActive && newSocket && !newSocket.connected) {
+            console.log('[Socket.IO Client] Native app resumed to foreground. Forcing reconnect...');
+            newSocket.connect();
+            fetchNotifications();
+            fetchBadgeSummary();
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to bind Capacitor App state listener', err);
+      }
+    }
+
     setSocket(newSocket);
 
     return () => {
+      window.removeEventListener('online', handleNetworkOnline);
+      if (appStateListener) {
+        appStateListener.remove();
+      }
       newSocket.disconnect();
     };
   }, [user]);

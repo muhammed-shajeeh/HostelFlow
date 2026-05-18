@@ -197,7 +197,14 @@ function App() {
         <SocketProvider>
           <BrowserRouter>
             <HardwareBackHandler />
-            <Toaster position="top-right" />
+            <Toaster 
+              position="top-right" 
+              containerStyle={{
+                top: 'calc(12px + env(safe-area-inset-top, 0px))',
+                left: '12px',
+                right: '12px'
+              }}
+            />
             <Routes>
               <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />

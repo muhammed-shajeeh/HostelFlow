@@ -5,9 +5,21 @@ import toast from 'react-hot-toast';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const cachedUser = localStorage.getItem('user');
+      return cachedUser ? JSON.parse(cachedUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState(localStorage.getItem('token') || null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    // If there is an active session in local storage, do not block app startup (loading = false)
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    return !(storedToken && storedUser);
+  });
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -17,16 +29,27 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('erp:unauthorized', handleUnauthorized);
   }, []);
 
-  // Fetch current user if token exists
+  // Fetch current user if token exists (background refresh if session was already hydrated)
   useEffect(() => {
     const fetchUser = async () => {
       if (token) {
         try {
           const res = await api.get('/auth/me');
           setUser(res.data.user);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
         } catch (error) {
-          console.error("Failed to fetch user", error);
-          logout();
+          console.error("Failed to fetch user profile", error);
+          
+          // Separate Authentication failure from Network/Server failure!
+          const isNetworkError = !error.response || error.code === 'ERR_NETWORK' || error.message === 'Network Error';
+          const isServerUnavailable = error.response && (error.response.status >= 500);
+          
+          if (isNetworkError || isServerUnavailable) {
+            console.warn("[Auth Context] Operating in offline/cached session mode due to server unreachability.");
+          } else {
+            // Actual authorization rejection/expiration - trigger logout safely
+            logout();
+          }
         }
       }
       setLoading(false);
@@ -47,6 +70,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = (newToken, userData) => {
     localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(userData));
     setToken(newToken);
     setUser(userData);
   };
@@ -59,6 +83,7 @@ export const AuthProvider = ({ children }) => {
       .catch(err => console.warn('Failed to deregister push notifications', err));
 
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
     toast.success('Logged out successfully');

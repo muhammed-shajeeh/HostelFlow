@@ -394,6 +394,19 @@ export default function SidebarLayout() {
           </div>
         </header>
         
+        {/* Full-width Offline alert banner */}
+        {!isOnline && (
+          <div className="bg-amber-500 text-slate-950 dark:bg-amber-600 dark:text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between shadow-xs transition-all duration-300 animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <WifiOff size={14} className="animate-pulse" />
+              <span>Offline Mode: Operating on locally cached session. Reconnecting automatically...</span>
+            </div>
+            <span className="text-[10px] font-black tracking-widest bg-slate-950/20 px-2 py-0.5 rounded-md uppercase">
+              No Internet
+            </span>
+          </div>
+        )}
+
         {/* Page Viewport Container */}
         <div className="p-4 md:p-6 flex-1 overflow-y-auto w-full bg-slate-50/50 dark:bg-zinc-950">
           <Outlet />
