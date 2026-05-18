@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { useSocket } from '../context/SocketContext';
 import { 
   FileText, 
   Users, 
@@ -14,10 +15,12 @@ import {
   TrendingUp, 
   Calendar,
   Lock,
-  ChevronRight
+  ChevronRight,
+  UserCheck
 } from 'lucide-react';
 
 export default function WardenDashboard() {
+  const { badgeSummary } = useSocket();
   const [stats, setStats] = useState(null);
   const [attendanceStats, setAttendanceStats] = useState(null);
   const [complaintStats, setComplaintStats] = useState(null);
@@ -69,14 +72,50 @@ export default function WardenDashboard() {
       {/* Top Welcome Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Warden Operations</h2>
-          <p className="text-xs text-gray-500 font-medium">Monitor active leaves, record daily rolls, track compliance, and manage student dining schedules.</p>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-zinc-150 tracking-tight">Warden Operations</h2>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium">Monitor active leaves, record daily rolls, track compliance, and manage student dining schedules.</p>
         </div>
-        <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border shadow-sm text-xs font-semibold text-gray-600">
+        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 dark:border-zinc-800 px-3.5 py-1.5 rounded-xl border shadow-sm text-xs font-semibold text-gray-650 dark:text-zinc-350">
           <Calendar size={14} className="text-blue-500" />
           <span>{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
         </div>
       </div>
+
+      {/* REALTIME PENDING STUDENT APPROVALS ALERT CARD */}
+      {badgeSummary?.pendingStudents > 0 && (
+        <div className="bg-rose-50 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300 relative overflow-hidden group shadow-xs">
+          {/* Accent glow line */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500"></div>
+          
+          <div className="flex items-start gap-3.5 pl-1.5">
+            <div className="w-10 h-10 bg-rose-100 dark:bg-rose-950/50 rounded-xl flex items-center justify-center text-rose-600 dark:text-rose-400 flex-shrink-0 relative">
+              <UserCheck size={20} />
+              {/* Subtle Red Pulsing Ring */}
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              </span>
+            </div>
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-rose-800 dark:text-rose-400 flex items-center gap-1.5">
+                New Student Requests
+              </h4>
+              <p className="text-sm font-black text-slate-800 dark:text-zinc-200 mt-1">
+                {badgeSummary.pendingStudents} student{badgeSummary.pendingStudents > 1 ? 's' : ''} awaiting approval & room allocation
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">
+                Action required to complete active boarding onboarding.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/students/pending"
+            className="self-start sm:self-center flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          >
+            Review Requests <ChevronRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {/* Main KPI Stats Block */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
