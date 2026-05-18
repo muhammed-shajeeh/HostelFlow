@@ -1,0 +1,4 @@
+sequenceDiagram
+    Backend ->> SocketContext: Notice Event
+    SocketContext ->> Window: dispatch erp:noticeEvent
+    Window ->> NoticesPage: trigger refetch

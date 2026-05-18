@@ -1,0 +1,4 @@
+graph TD
+    A[React PWA Client] -->|REST API| B[Express Server]
+    A <-->|Socket.IO| C[Socket.IO Engine]
+    B -->|Mongoose ODM| D[MongoDB Atlas]

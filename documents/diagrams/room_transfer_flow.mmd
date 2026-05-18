@@ -1,0 +1,4 @@
+graph TD
+    Start ->|Request| Warden
+    Warden ->|Transfer| Save
+    Save ->|Socket emit| Broadcast
