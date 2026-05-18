@@ -24,10 +24,12 @@ import {
 import api from '../api';
 import NotificationBell from '../components/NotificationBell';
 import { useTheme } from '../context/ThemeContext';
+import { useSocket } from '../context/SocketContext';
 
 export default function SidebarLayout() {
   const { user, logout } = useContext(AuthContext);
   const { theme, toggleTheme } = useTheme();
+  const { badgeSummary } = useSocket();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [parentStudents, setParentStudents] = useState([]);
@@ -107,21 +109,37 @@ export default function SidebarLayout() {
   const firstStudentId = parentStudents[0]?._id || null;
   const initials = getInitials(user?.fullName);
 
-  // Reusable notion/linear navigation item link component
-  const NavLink = ({ to, icon: Icon, children }) => {
+  // Reusable notion/linear navigation item link component with modern rounded notification bubbles
+  const NavLink = ({ to, icon: Icon, badge, badgeColor = 'red', children }) => {
     const active = window.location.pathname === to || window.location.pathname.startsWith(to + '/');
+    
+    // Choose beautiful high-fidelity ERP-style badge colors with proper dark mode compliance
+    const getBadgeColors = () => {
+      if (badgeColor === 'red') return 'bg-rose-500 text-white dark:bg-rose-600';
+      if (badgeColor === 'orange') return 'bg-amber-500 text-slate-950 dark:bg-amber-600 dark:text-white';
+      if (badgeColor === 'blue') return 'bg-blue-500 text-white dark:bg-blue-600';
+      return 'bg-slate-400 text-white dark:bg-zinc-650';
+    };
+
     return (
       <Link 
         to={to} 
         onClick={closeSidebar}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-150 cursor-pointer min-h-[44px] ${
+        className={`flex items-center justify-between px-3 py-2.5 rounded-xl font-bold text-sm transition-all duration-150 cursor-pointer min-h-[44px] ${
           active 
             ? 'bg-blue-600 text-white shadow-xs font-black' 
             : 'text-slate-650 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800'
         }`}
       >
-        <Icon size={18} className={active ? 'text-white' : 'text-slate-500 dark:text-zinc-400'} />
-        <span>{children}</span>
+        <div className="flex items-center gap-3">
+          <Icon size={18} className={active ? 'text-white' : 'text-slate-500 dark:text-zinc-400'} />
+          <span>{children}</span>
+        </div>
+        {badge > 0 && (
+          <span className={`px-2 py-0.5 text-[10px] font-black rounded-full min-w-[18px] text-center select-none shadow-xs transition-all duration-200 ${getBadgeColors()}`}>
+            {badge}
+          </span>
+        )}
       </Link>
     );
   };
@@ -168,10 +186,10 @@ export default function SidebarLayout() {
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Operations</div>
                 <NavLink to="/attendance/mark" icon={CheckSquare}>Attendance</NavLink>
-                <NavLink to="/leaves/pending" icon={FileText}>Leave Requests</NavLink>
-                <NavLink to="/students/list" icon={Users}>Students</NavLink>
+                <NavLink to="/leaves/pending" icon={FileText} badge={badgeSummary?.pendingLeaves} badgeColor="orange">Leave Requests</NavLink>
+                <NavLink to="/students/list" icon={Users} badge={badgeSummary?.pendingStudents} badgeColor="red">Students</NavLink>
                 <NavLink to="/rooms" icon={Home}>Rooms</NavLink>
-                <NavLink to="/complaints" icon={AlertCircle}>Complaints</NavLink>
+                <NavLink to="/complaints" icon={AlertCircle} badge={badgeSummary?.pendingComplaints} badgeColor="red">Complaints</NavLink>
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Utilities & Reports</div>
                 <NavLink to="/warden/mess" icon={Utensils}>Mess & Billing</NavLink>
@@ -190,8 +208,8 @@ export default function SidebarLayout() {
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Management</div>
                 <NavLink to="/admin/hostels" icon={Home}>Hostels</NavLink>
                 <NavLink to="/admin/wardens" icon={Users}>Wardens</NavLink>
-                <NavLink to="/students/list" icon={Users}>Students</NavLink>
-                <NavLink to="/complaints" icon={AlertCircle}>Complaints</NavLink>
+                <NavLink to="/students/list" icon={Users} badge={badgeSummary?.pendingStudents} badgeColor="red">Students</NavLink>
+                <NavLink to="/complaints" icon={AlertCircle} badge={badgeSummary?.pendingComplaints} badgeColor="red">Complaints</NavLink>
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Finance & Notices</div>
                 <NavLink to="/admin/billing" icon={Utensils}>Financials</NavLink>
@@ -210,12 +228,12 @@ export default function SidebarLayout() {
                 <NavLink to="/student" icon={LayoutDashboard}>Dashboard</NavLink>
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Requests & Logs</div>
-                <NavLink to="/student/leaves/request" icon={FileText}>Leave Requests</NavLink>
+                <NavLink to="/student/leaves/request" icon={FileText} badge={badgeSummary?.pendingLeaves} badgeColor="orange">Leave Requests</NavLink>
                 <NavLink to="/student/attendance" icon={CheckSquare}>Attendance</NavLink>
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Utilities</div>
                 <NavLink to="/student/billing" icon={CreditCard}>Mess & Billing</NavLink>
-                <NavLink to="/student/complaints" icon={AlertCircle}>Complaints</NavLink>
+                <NavLink to="/student/complaints" icon={AlertCircle} badge={badgeSummary?.pendingComplaints} badgeColor="red">Complaints</NavLink>
                 <NavLink to="/notices" icon={Megaphone}>Notices</NavLink>
                 <NavLink to="/student/analytics" icon={BarChart2}>Analytics</NavLink>
               </>

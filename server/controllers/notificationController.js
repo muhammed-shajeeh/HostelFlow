@@ -123,10 +123,74 @@ const deregisterDeviceToken = async (req, res, next) => {
   }
 };
 
+const User = require('../models/User');
+const Leave = require('../models/Leave');
+const Complaint = require('../models/Complaint');
+
+const getNotificationSummary = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const role = req.user.role;
+    const hostelId = req.user.hostelId;
+
+    const summary = {
+      pendingStudents: 0,
+      pendingLeaves: 0,
+      pendingComplaints: 0,
+      unreadNotifications: 0
+    };
+
+    // 1. Fetch unread notification counts for all roles except SECURITY
+    if (role !== 'SECURITY') {
+      summary.unreadNotifications = await Notification.countDocuments({
+        recipientId: userId,
+        isRead: false
+      });
+    }
+
+    // 2. Fetch specific ERP action items depending on role
+    if (role === 'ADMIN') {
+      const [students, complaints] = await Promise.all([
+        User.countDocuments({ role: 'STUDENT', approvalStatus: 'PENDING' }),
+        Complaint.countDocuments({ status: 'OPEN' })
+      ]);
+      summary.pendingStudents = students;
+      summary.pendingComplaints = complaints;
+    } else if (role === 'WARDEN') {
+      // For wardens, filter by their assigned hostel if configured
+      const queryFilter = hostelId ? { hostelId } : {};
+      
+      const [leaves, complaints, students] = await Promise.all([
+        Leave.countDocuments({ ...queryFilter, status: 'PENDING' }),
+        Complaint.countDocuments({ ...queryFilter, status: 'OPEN' }),
+        User.countDocuments({ ...queryFilter, role: 'STUDENT', approvalStatus: 'PENDING' })
+      ]);
+      summary.pendingLeaves = leaves;
+      summary.pendingComplaints = complaints;
+      summary.pendingStudents = students;
+    } else if (role === 'STUDENT') {
+      const [leaves, complaints] = await Promise.all([
+        Leave.countDocuments({ studentId: userId, status: 'PENDING' }),
+        Complaint.countDocuments({ studentId: userId, status: 'OPEN' })
+      ]);
+      summary.pendingLeaves = leaves;
+      summary.pendingComplaints = complaints;
+    }
+
+    res.status(200).json({
+      success: true,
+      summary
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getNotifications,
   markAsRead,
   markAllAsRead,
   registerDeviceToken,
-  deregisterDeviceToken
+  deregisterDeviceToken,
+  getNotificationSummary
 };

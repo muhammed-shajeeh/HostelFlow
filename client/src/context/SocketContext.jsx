@@ -14,14 +14,27 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [badgeSummary, setBadgeSummary] = useState({
+    pendingStudents: 0,
+    pendingLeaves: 0,
+    pendingComplaints: 0,
+    unreadNotifications: 0
+  });
 
-  // Fetch initial notifications from API when user logs in
+  // Fetch initial notifications and badge summaries from API when user logs in
   useEffect(() => {
     if (user) {
       fetchNotifications();
+      fetchBadgeSummary();
     } else {
       setNotifications([]);
       setUnreadCount(0);
+      setBadgeSummary({
+        pendingStudents: 0,
+        pendingLeaves: 0,
+        pendingComplaints: 0,
+        unreadNotifications: 0
+      });
     }
   }, [user]);
 
@@ -35,6 +48,34 @@ export const SocketProvider = ({ children }) => {
       console.error('Failed to load notifications history', err);
     }
   };
+
+  const fetchBadgeSummary = async () => {
+    if (!user) return;
+    try {
+      const res = await api.get('/notifications/summary');
+      if (res.data.success && res.data.summary) {
+        setBadgeSummary(res.data.summary);
+      }
+    } catch (err) {
+      console.warn('[Socket Context] Failed to fetch badge summary', err);
+    }
+  };
+
+  // ERP custom triggers to auto-update sidebars and badges on operational events
+  useEffect(() => {
+    if (!user) return;
+    
+    const handleRefreshEvents = () => {
+      fetchBadgeSummary();
+    };
+
+    window.addEventListener('erp:refresh', handleRefreshEvents);
+    window.addEventListener('erp:leaveUpdated', handleRefreshEvents);
+    return () => {
+      window.removeEventListener('erp:refresh', handleRefreshEvents);
+      window.removeEventListener('erp:leaveUpdated', handleRefreshEvents);
+    };
+  }, [user]);
 
   // Socket connection manager
   useEffect(() => {
@@ -86,6 +127,7 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('NEW_NOTIFICATION', (notification) => {
       setNotifications(prev => [notification, ...prev]);
       setUnreadCount(prev => prev + 1);
+      fetchBadgeSummary(); // Sync real-time badge counts
 
       // Play soft in-app audible sound or show elegant toast message
       toast.success(() => (
@@ -101,14 +143,17 @@ export const SocketProvider = ({ children }) => {
       console.log('[Socket.IO Client] Broadcast trigger: Dashboard Refresh Requested for', event.type);
       // Dispatch standard browser CustomEvent so page components can reload their local states instantly
       window.dispatchEvent(new CustomEvent('erp:refresh', { detail: event }));
+      fetchBadgeSummary(); // Sync real-time badge counts
     });
 
     newSocket.on('NEW_NOTICE', (notice) => {
       window.dispatchEvent(new CustomEvent('erp:newNotice', { detail: notice }));
+      fetchBadgeSummary();
     });
 
     newSocket.on('LEAVE_STATUS_UPDATED', (leave) => {
       window.dispatchEvent(new CustomEvent('erp:leaveUpdated', { detail: leave }));
+      fetchBadgeSummary();
     });
 
     setSocket(newSocket);
@@ -123,6 +168,7 @@ export const SocketProvider = ({ children }) => {
       await api.put(`/notifications/${id}/read`);
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
+      fetchBadgeSummary(); // Keep badge summary in sync
     } catch (err) {
       toast.error('Failed to mark notification as read.');
     }
@@ -133,6 +179,7 @@ export const SocketProvider = ({ children }) => {
       await api.put('/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
+      setBadgeSummary(prev => ({ ...prev, unreadNotifications: 0 }));
       toast.success('All notifications cleared.');
     } catch (err) {
       toast.error('Failed to clear notifications.');
@@ -140,7 +187,16 @@ export const SocketProvider = ({ children }) => {
   };
 
   return (
-    <SocketContext.Provider value={{ socket, notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications: fetchNotifications }}>
+    <SocketContext.Provider value={{ 
+      socket, 
+      notifications, 
+      unreadCount, 
+      badgeSummary, 
+      markAsRead, 
+      markAllAsRead, 
+      refreshNotifications: fetchNotifications,
+      refreshBadgeSummary: fetchBadgeSummary
+    }}>
       {children}
     </SocketContext.Provider>
   );
