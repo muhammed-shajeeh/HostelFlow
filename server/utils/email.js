@@ -1,38 +1,50 @@
-const { Resend } = require("resend");
-
 const sendEmail = async (options) => {
-    if (!process.env.RESEND_API_KEY) {
-        const err = new Error("RESEND_API_KEY environment variable is not configured in the host environment!");
-        console.error("[MAILER] [RESEND] Configuration Error:", err.message);
+    if (!process.env.BREVO_API_KEY) {
+        const err = new Error("BREVO_API_KEY environment variable is not configured in the host environment!");
+        console.error("[MAILER] [BREVO] Configuration Error:", err.message);
         throw err;
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY.trim());
+    console.log(`[MAILER] [BREVO] Initializing secure HTTPS transactional dispatch`);
 
-    // Use customized verified sender email if specified, otherwise fall back to Resend's default sandbox onboarding address
-    const fromEmail = process.env.RESEND_FROM_EMAIL 
-        ? process.env.RESEND_FROM_EMAIL.trim() 
-        : "onboarding@resend.dev";
-
-    console.log(`[MAILER] [RESEND] Initializing Resend API client`);
+    // Verified Gmail sender identity registered on Brevo account
+    const senderEmail = "myhostelflow@gmail.com";
 
     try {
-        console.log(`[MAILER] [RESEND] Attempting HTTPS API dispatch | Recipient: ${options.email} | Subject: "${options.subject}"`);
-        const response = await resend.emails.send({
-            from: `"Smart Hostel" <${fromEmail}>`,
-            to: options.email,
-            subject: options.subject,
-            html: options.html
+        console.log(`[MAILER] [BREVO] Attempting API dispatch | Recipient: ${options.email} | Subject: "${options.subject}"`);
+        
+        const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "content-type": "application/json",
+                "api-key": process.env.BREVO_API_KEY.trim()
+            },
+            body: JSON.stringify({
+                sender: {
+                    name: "Smart Hostel",
+                    email: senderEmail
+                },
+                to: [
+                    {
+                        email: options.email
+                    }
+                ],
+                subject: options.subject,
+                htmlContent: options.html
+            })
         });
 
-        if (response.error) {
-            throw new Error(response.error.message || JSON.stringify(response.error));
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || JSON.stringify(data));
         }
 
-        console.log(`[MAILER] [RESEND] Dispatch succeeded to ${options.email} | Delivery ID: ${response.data?.id}`);
-        return response.data;
+        console.log(`[MAILER] [BREVO] Dispatch succeeded to ${options.email} | Message ID: ${data.messageId}`);
+        return data;
     } catch (error) {
-        console.error(`[MAILER] [RESEND] API delivery failed to ${options.email} | Error:`, error.message || error);
+        console.error(`[MAILER] [BREVO] API delivery failed to ${options.email} | Error:`, error.message || error);
         throw error;
     }
 };
