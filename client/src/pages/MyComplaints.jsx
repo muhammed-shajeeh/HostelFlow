@@ -62,6 +62,22 @@ export default function MyComplaints() {
       .catch(err => console.warn('Failed to clear complaint notifications', err));
   }, []);
 
+  useEffect(() => {
+    const handleComplaintUpdated = (e) => {
+      const updated = e.detail;
+      setComplaints(prev => {
+        if (prev.some(c => c._id === updated._id)) {
+          toast.success(`Complaint status updated to: ${updated.status}`, { icon: '🔔' });
+          return prev.map(c => c._id === updated._id ? { ...c, ...updated } : c);
+        }
+        return [updated, ...prev];
+      });
+    };
+
+    window.addEventListener('erp:complaintUpdated', handleComplaintUpdated);
+    return () => window.removeEventListener('erp:complaintUpdated', handleComplaintUpdated);
+  }, []);
+
   // Client-side filter — no extra API call needed
   const filtered = filter === 'ALL'
     ? complaints

@@ -156,6 +156,21 @@ export const SocketProvider = ({ children }) => {
       fetchBadgeSummary();
     });
 
+    newSocket.on('COMPLAINT_UPDATED', (complaint) => {
+      window.dispatchEvent(new CustomEvent('erp:complaintUpdated', { detail: complaint }));
+      fetchBadgeSummary();
+    });
+
+    newSocket.on('ROOM_TRANSFERRED', (roomTransfer) => {
+      window.dispatchEvent(new CustomEvent('erp:roomTransferred', { detail: roomTransfer }));
+      fetchBadgeSummary();
+    });
+
+    newSocket.on('STUDENT_APPROVED', (student) => {
+      window.dispatchEvent(new CustomEvent('erp:studentApproved', { detail: student }));
+      fetchBadgeSummary();
+    });
+
     setSocket(newSocket);
 
     return () => {

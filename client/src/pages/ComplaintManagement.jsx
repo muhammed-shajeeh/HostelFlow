@@ -148,6 +148,21 @@ export default function ComplaintManagement() {
     // eslint-disable-next-line
   }, [statusFilter, priorityFilter, categoryFilter]);
 
+  useEffect(() => {
+    const handleComplaintUpdated = (e) => {
+      const updated = e.detail;
+      setComplaints(prev => {
+        if (prev.some(c => c._id === updated._id)) {
+          return prev.map(c => c._id === updated._id ? { ...c, ...updated } : c);
+        }
+        return [updated, ...prev];
+      });
+    };
+
+    window.addEventListener('erp:complaintUpdated', handleComplaintUpdated);
+    return () => window.removeEventListener('erp:complaintUpdated', handleComplaintUpdated);
+  }, []);
+
   const openStatusModal = (complaint) => {
     setSelectedComplaint(complaint);
     setShowModal(true);

@@ -26,6 +26,22 @@ export default function StudentLeaveHistory() {
       .catch(err => console.warn('Failed to clear leave notifications', err));
   }, []);
 
+  useEffect(() => {
+    const handleLeaveUpdated = (e) => {
+      const updated = e.detail;
+      setLeaves(prev => {
+        if (prev.some(l => l._id === updated._id)) {
+          toast.success(`Outpass status updated: ${updated.status}`, { icon: '🔔' });
+          return prev.map(l => l._id === updated._id ? { ...l, ...updated } : l);
+        }
+        return [updated, ...prev];
+      });
+    };
+
+    window.addEventListener('erp:leaveUpdated', handleLeaveUpdated);
+    return () => window.removeEventListener('erp:leaveUpdated', handleLeaveUpdated);
+  }, []);
+
   const fetchHistory = async () => {
     try {
       const res = await api.get('/leaves/student/history');

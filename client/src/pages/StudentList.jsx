@@ -24,6 +24,57 @@ export default function StudentList() {
     fetchStudents();
   }, []);
 
+  useEffect(() => {
+    const handleRoomTransferred = (e) => {
+      const transfer = e.detail;
+      setStudents(prev => {
+        return prev.map(s => {
+          if (s._id === transfer.studentId) {
+            return {
+              ...s,
+              roomId: s.roomId ? {
+                ...s.roomId,
+                _id: transfer.newRoomId,
+                roomNumber: transfer.newRoomNumber
+              } : {
+                _id: transfer.newRoomId,
+                roomNumber: transfer.newRoomNumber
+              },
+              bedNumber: transfer.newBedNumber
+            };
+          }
+          return s;
+        });
+      });
+    };
+
+    const handleStudentApproved = (e) => {
+      const student = e.detail;
+      setStudents(prev => {
+        if (prev.some(s => s._id === student.studentId)) return prev;
+        return [...prev, {
+          _id: student.studentId,
+          fullName: student.fullName,
+          admissionNumber: student.admissionNumber,
+          hostelId: student.hostelId,
+          roomId: {
+            _id: student.roomId,
+            roomNumber: student.roomNumber
+          },
+          bedNumber: student.bedNumber,
+          approvalStatus: 'APPROVED'
+        }];
+      });
+    };
+
+    window.addEventListener('erp:roomTransferred', handleRoomTransferred);
+    window.addEventListener('erp:studentApproved', handleStudentApproved);
+    return () => {
+      window.removeEventListener('erp:roomTransferred', handleRoomTransferred);
+      window.removeEventListener('erp:studentApproved', handleStudentApproved);
+    };
+  }, []);
+
   const fetchStudents = async () => {
     try {
       const res = await api.get('/students');

@@ -375,6 +375,17 @@ student.bedNumber = bedNumber;
 
 await student.save();
 
+const { createAndEmitNotification, emitToRoom } = require('../utils/socket');
+emitToRoom(`HOSTEL_${student.hostelId}`, 'STUDENT_APPROVED', {
+  studentId: student._id,
+  fullName: student.fullName,
+  admissionNumber: student.admissionNumber,
+  hostelId: student.hostelId,
+  roomId: bestRoom._id,
+  roomNumber: bestRoom.roomNumber,
+  bedNumber
+});
+
 // Log student approved audit event
 const { logAudit } = require('../utils/auditLogger');
 await logAudit({
@@ -675,6 +686,28 @@ const changeRoom = async (req, res, next) => {
 
     // Notify other portal users in the hostel in real-time to trigger instant dashboard/occupancy updates
     emitToRoom(`HOSTEL_${student.hostelId}`, 'REFRESH_DASHBOARD', { type: 'ROOM_ALLOCATION' });
+    emitToRoom(`HOSTEL_${student.hostelId}`, 'ROOM_TRANSFERRED', {
+      studentId: student._id,
+      oldRoomId,
+      oldRoomNumber,
+      newRoomId: newRoom._id,
+      newRoomNumber: newRoom.roomNumber,
+      newBedNumber,
+      reason: reason || 'Dynamic room assignment',
+      updatedBy: req.user._id,
+      updatedAt: new Date()
+    });
+    emitToRoom(`STUDENT_${student._id}`, 'ROOM_TRANSFERRED', {
+      studentId: student._id,
+      oldRoomId,
+      oldRoomNumber,
+      newRoomId: newRoom._id,
+      newRoomNumber: newRoom.roomNumber,
+      newBedNumber,
+      reason: reason || 'Dynamic room assignment',
+      updatedBy: req.user._id,
+      updatedAt: new Date()
+    });
 
     // Log atomic audit log for tracebility
     const { logAudit } = require('../utils/auditLogger');

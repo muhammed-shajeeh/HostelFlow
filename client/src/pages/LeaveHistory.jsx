@@ -10,6 +10,24 @@ export default function LeaveHistory() {
     fetchHistory();
   }, []);
 
+  useEffect(() => {
+    const handleLeaveUpdated = (e) => {
+      const updated = e.detail;
+      setLeaves(prev => {
+        if (prev.some(l => l._id === updated._id)) {
+          return prev.map(l => l._id === updated._id ? { ...l, ...updated } : l);
+        }
+        if (updated.status !== 'PENDING') {
+          return [updated, ...prev];
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('erp:leaveUpdated', handleLeaveUpdated);
+    return () => window.removeEventListener('erp:leaveUpdated', handleLeaveUpdated);
+  }, []);
+
   const fetchHistory = async () => {
     try {
       const res = await api.get('/leaves/history');

@@ -205,17 +205,26 @@ const updateComplaintStatus = async (req, res, next) => {
 
     await complaint.save();
 
+    // Populate relations so client list views do not break on real-time state patch updates
+    await complaint.populate([
+      { path: 'studentId', select: 'fullName admissionNumber' },
+      { path: 'roomId', select: 'roomNumber floor' },
+      { path: 'assignedTo', select: 'fullName' }
+    ]);
+
     // Notify the student that their complaint status has changed
     await createAndEmitNotification({
-      recipientId: complaint.studentId,
+      recipientId: complaint.studentId._id,
       title: 'Complaint Status Updated',
       message: `Your complaint "${complaint.title}" is now marked as ${status}.`,
       type: 'COMPLAINT_RESOLVED',
       actionUrl: '/student/complaints',
       hostelId: complaint.hostelId
     });
-    emitToRoom(`STUDENT_${complaint.studentId}`, 'REFRESH_DASHBOARD', { type: 'COMPLAINT_STATUS_UPDATED' });
+    emitToRoom(`STUDENT_${complaint.studentId._id}`, 'REFRESH_DASHBOARD', { type: 'COMPLAINT_STATUS_UPDATED' });
     emitToRoom(`HOSTEL_${complaint.hostelId}`, 'REFRESH_DASHBOARD', { type: 'COMPLAINT_STATUS_UPDATED' });
+    emitToRoom(`STUDENT_${complaint.studentId._id}`, 'COMPLAINT_UPDATED', complaint);
+    emitToRoom(`HOSTEL_${complaint.hostelId}`, 'COMPLAINT_UPDATED', complaint);
 
     res.status(200).json({
       success: true,
@@ -255,6 +264,13 @@ const assignComplaint = async (req, res, next) => {
 
     await complaint.save();
 
+    // Populate relations so client list views do not break on real-time state patch updates
+    await complaint.populate([
+      { path: 'studentId', select: 'fullName admissionNumber' },
+      { path: 'roomId', select: 'roomNumber floor' },
+      { path: 'assignedTo', select: 'fullName' }
+    ]);
+
     // Notify the assigned staff/warden
     await createAndEmitNotification({
       recipientId: assignedTo,
@@ -265,6 +281,8 @@ const assignComplaint = async (req, res, next) => {
       hostelId: complaint.hostelId
     });
     emitToRoom(`HOSTEL_${complaint.hostelId}`, 'REFRESH_DASHBOARD', { type: 'COMPLAINT_ASSIGNED' });
+    emitToRoom(`STUDENT_${complaint.studentId._id}`, 'COMPLAINT_UPDATED', complaint);
+    emitToRoom(`HOSTEL_${complaint.hostelId}`, 'COMPLAINT_UPDATED', complaint);
 
     res.status(200).json({
       success: true,
