@@ -54,8 +54,13 @@ export const SocketProvider = ({ children }) => {
       if (import.meta.env.VITE_API_URL) {
         return import.meta.env.VITE_API_URL.trim().replace(/\/api\/?$/, '').replace(/\/$/, '');
       }
-      if (Capacitor.isNativePlatform()) return 'http://10.0.2.2:5000';
-      return 'http://localhost:5000';
+      
+      // Environment-aware resolution for live production and localhost
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        return 'http://localhost:5000';
+      }
+      
+      return 'https://hostelflow-mg85.onrender.com';
     };
     const socketUrl = getSocketUrl();
     const newSocket = io(socketUrl, {

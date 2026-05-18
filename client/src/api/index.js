@@ -8,12 +8,12 @@ const getBaseURL = () => {
     return base.endsWith('/api') ? base : `${base}/api`;
   }
   
-  if (Capacitor.isNativePlatform()) {
-    // Falls back to standard local emulator host loopback interface
-    return 'http://10.0.2.2:5000/api';
+  // Environment-aware resolution (perfect for localhost, deployed Vercel, and Capacitor native platforms)
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:5000/api';
   }
 
-  return 'http://localhost:5000/api';
+  return 'https://hostelflow-mg85.onrender.com/api';
 };
 
 const api = axios.create({
