@@ -56,7 +56,7 @@ function StatusModal({ complaint, onClose, onUpdated }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
         <div className="p-5 border-b flex justify-between items-center">
           <h3 className="font-bold text-lg">Update Complaint Status</h3>
@@ -72,11 +72,11 @@ function StatusModal({ complaint, onClose, onUpdated }) {
             <div className="flex flex-wrap gap-2">
               {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'].map(s => (
                 <button
-                  key={s}
-                  onClick={() => setStatus(s)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${
-                    status === s ? 'border-blue-500 ring-2 ring-blue-200 ' + (STATUS_STYLES[s] || '') : 'border-gray-200 text-gray-500'
-                  }`}
+                   key={s}
+                   onClick={() => setStatus(s)}
+                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${
+                     status === s ? 'border-blue-500 ring-2 ring-blue-200 ' + (STATUS_STYLES[s] || '') : 'border-gray-200 text-gray-500'
+                   }`}
                 >
                   {s.replace('_', ' ')}
                 </button>
@@ -99,7 +99,7 @@ function StatusModal({ complaint, onClose, onUpdated }) {
           )}
         </div>
         <div className="p-5 border-t flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50 transition text-sm font-medium">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 border rounded-lg text-gray-600 hover:bg-gray-50 transition text-sm font-medium cancel">Cancel</button>
           <button
             onClick={handleSubmit}
             disabled={submitting}

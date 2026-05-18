@@ -192,7 +192,7 @@ export default function Rooms() {
 
       {/* Create Room Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/60 flex justify-center items-center p-4 z-50">
           <div className="bg-white p-6 rounded shadow-xl w-full max-w-md">
             <h3 className="text-xl font-bold mb-4">Create New Room</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -231,7 +231,7 @@ export default function Rooms() {
               </div>
               
               <div className="flex justify-end gap-2 mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded hover:bg-gray-100 cancel">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
                   {submitting ? 'Saving...' : 'Create'}
                 </button>

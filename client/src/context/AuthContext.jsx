@@ -9,6 +9,14 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+    };
+    window.addEventListener('erp:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('erp:unauthorized', handleUnauthorized);
+  }, []);
+
   // Fetch current user if token exists
   useEffect(() => {
     const fetchUser = async () => {

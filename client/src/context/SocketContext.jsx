@@ -117,6 +117,8 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on('connect', () => {
       console.log('[Socket.IO Client] Connected successfully with ID:', newSocket.id);
+      fetchNotifications();
+      fetchBadgeSummary();
     });
 
     newSocket.on('connect_error', (err) => {

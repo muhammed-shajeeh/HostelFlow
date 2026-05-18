@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
+import toast from 'react-hot-toast';
 
 // Environment-aware API URL detection
 const getBaseURL = () => {
@@ -35,5 +36,32 @@ api.interceptors.request.use((config) => {
 }, (error) => {
   return Promise.reject(error);
 });
+
+// Intercept responses to handle 401 Unauthorized errors and network failures
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Graceful offline detection & network failure indicators
+    if (!navigator.onLine || error.message === 'Network Error') {
+      toast.error('Network failure. Please check your internet connection.');
+    }
+
+    if (error.response && error.response.status === 401) {
+      // Clear token and user session persistence storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+
+      // Dispatch custom event to let AuthContext know of session termination
+      window.dispatchEvent(new CustomEvent('erp:unauthorized'));
+
+      // Redirect to login if not already there
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/' && currentPath !== '/register') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;
