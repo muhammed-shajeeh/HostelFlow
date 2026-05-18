@@ -16,3 +16,6 @@ dist
 android/app/google-services.json
 firebase-adminsdk.json
 
+# Production Release Keystores & Credentials
+*.keystore
+*.jks
