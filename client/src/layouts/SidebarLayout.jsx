@@ -187,7 +187,7 @@ export default function SidebarLayout() {
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Operations</div>
                 <NavLink to="/attendance/mark" icon={CheckSquare}>Attendance</NavLink>
                 <NavLink to="/leaves/pending" icon={FileText} badge={badgeSummary?.pendingLeaves} badgeColor="orange">Leave Requests</NavLink>
-                <NavLink to="/students/list" icon={Users} badge={badgeSummary?.pendingStudents} badgeColor="red">Students</NavLink>
+                <NavLink to="/students/list" icon={Users}>Students</NavLink>
                 <NavLink to="/rooms" icon={Home}>Rooms</NavLink>
                 <NavLink to="/complaints" icon={AlertCircle} badge={badgeSummary?.pendingComplaints} badgeColor="red">Complaints</NavLink>
                 
@@ -208,7 +208,7 @@ export default function SidebarLayout() {
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Management</div>
                 <NavLink to="/admin/hostels" icon={Home}>Hostels</NavLink>
                 <NavLink to="/admin/wardens" icon={Users}>Wardens</NavLink>
-                <NavLink to="/students/list" icon={Users} badge={badgeSummary?.pendingStudents} badgeColor="red">Students</NavLink>
+                <NavLink to="/students/list" icon={Users}>Students</NavLink>
                 <NavLink to="/admin/student-transfer" icon={FileText}>Student Transfer</NavLink>
                 <NavLink to="/complaints" icon={AlertCircle} badge={badgeSummary?.pendingComplaints} badgeColor="red">Complaints</NavLink>
                 

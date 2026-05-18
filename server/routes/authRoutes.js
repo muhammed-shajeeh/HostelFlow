@@ -3,6 +3,7 @@ const { check } = require('express-validator');
 const { 
   register, 
   verifyEmail, 
+  resendVerification,
   login, 
   getMe, 
   updateProfile, 
@@ -34,6 +35,15 @@ router.post(
     check('otp', 'OTP is required and must be 6 digits').isLength({ min: 6, max: 6 }).isNumeric()
   ],
   verifyEmail
+);
+
+// @route   POST /api/auth/resend-verification
+router.post(
+  '/resend-verification',
+  [
+    check('email', 'Please include a valid email').isEmail().normalizeEmail()
+  ],
+  resendVerification
 );
 
 // @route   POST /api/auth/login

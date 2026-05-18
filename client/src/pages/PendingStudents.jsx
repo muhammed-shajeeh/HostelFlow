@@ -8,6 +8,19 @@ export default function PendingStudents() {
 
   useEffect(() => {
     fetchStudents();
+
+    const handleRefresh = (e) => {
+      console.log('[Pending Students] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchStudents();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    window.addEventListener('erp:studentApproved', handleRefresh);
+
+    return () => {
+      window.removeEventListener('erp:refresh', handleRefresh);
+      window.removeEventListener('erp:studentApproved', handleRefresh);
+    };
   }, []);
 
   const fetchStudents = async () => {

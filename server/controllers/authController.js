@@ -524,9 +524,72 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+// @desc    Resend Verification OTP
+// @route   POST /api/auth/resend-verification
+// @access  Public
+const resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Please provide email address.' });
+    }
+
+    const emailClean = String(email).trim().toLowerCase();
+    const user = await User.findOne({ email: emailClean });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No account found with this email address.' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ success: false, message: 'This email address is already verified.' });
+    }
+
+    // Generate secure OTP
+    const otp = generateOTP();
+    const salt = await bcrypt.genSalt(10);
+    const hashedOtp = await bcrypt.hash(otp, salt);
+
+    // Save recovery details to user
+    user.emailOtp = hashedOtp;
+    user.emailOtpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    await user.save();
+
+    // Symmetrical, premium email template matching tone rules
+    const emailHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h2 style="font-size: 24px; font-weight: 800; color: #0f172a; margin: 0;">Hostel<span style="color: #2563eb;">Flow</span></h2>
+          <p style="font-size: 11px; font-weight: 700; color: #64748b; margin: 6px 0 0 0; text-transform: uppercase; letter-spacing: 0.05em;">Email Verification</p>
+        </div>
+        <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 16px;">Hello ${user.fullName},</p>
+        <p style="font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 24px;">Here is your requested email verification OTP to activate your HostelFlow account:</p>
+        <div style="text-align: center; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <strong style="font-size: 32px; font-weight: 800; letter-spacing: 0.15em; color: #2563eb; font-family: monospace; display: block; margin: 0 auto;">${otp}</strong>
+        </div>
+        <p style="font-size: 12px; line-height: 1.5; color: #64748b; margin-bottom: 24px;">This verification code will expire in <strong>10 minutes</strong>.</p>
+      </div>
+    `;
+
+    res.status(200).json({ success: true, message: 'Verification OTP has been resent to your email address.' });
+
+    // Send asynchronous verification email
+    sendEmail({
+      email: user.email,
+      subject: 'Verify your Email - HostelFlow',
+      html: emailHtml
+    }).catch(emailErr => {
+      console.warn(`[MAILER] Resend verification email failed for ${user.email} — database update preserved.`);
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   verifyEmail,
+  resendVerification,
   login,
   getMe,
   updateProfile,

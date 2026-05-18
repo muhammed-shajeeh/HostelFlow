@@ -153,7 +153,7 @@ const getNotificationSummary = async (req, res, next) => {
     // 2. Fetch specific ERP action items depending on role
     if (role === 'ADMIN') {
       const [students, complaints] = await Promise.all([
-        User.countDocuments({ role: 'STUDENT', approvalStatus: 'PENDING' }),
+        User.countDocuments({ role: 'STUDENT', approvalStatus: 'PENDING', emailVerified: true }),
         Complaint.countDocuments({ status: 'OPEN' })
       ]);
       summary.pendingStudents = students;
@@ -165,7 +165,7 @@ const getNotificationSummary = async (req, res, next) => {
       const [leaves, complaints, students] = await Promise.all([
         Leave.countDocuments({ ...queryFilter, status: 'PENDING' }),
         Complaint.countDocuments({ ...queryFilter, status: 'OPEN' }),
-        User.countDocuments({ ...queryFilter, role: 'STUDENT', approvalStatus: 'PENDING' })
+        User.countDocuments({ ...queryFilter, role: 'STUDENT', approvalStatus: 'PENDING', emailVerified: true })
       ]);
       summary.pendingLeaves = leaves;
       summary.pendingComplaints = complaints;

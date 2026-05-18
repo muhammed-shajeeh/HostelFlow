@@ -9,6 +9,16 @@ export default function StudentAttendance() {
 
   useEffect(() => {
     fetchHistory();
+
+    const handleRefresh = (e) => {
+      console.log('[Student Attendance] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchHistory();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    return () => {
+      window.removeEventListener('erp:refresh', handleRefresh);
+    };
   }, []);
 
   const fetchHistory = async () => {

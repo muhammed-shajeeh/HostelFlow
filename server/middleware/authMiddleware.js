@@ -15,12 +15,18 @@ const authMiddleware = async (req, res, next) => {
 
     try {
       const decoded = verifyToken(token);
+      if (!decoded || !decoded.userId) {
+        return res.status(401).json({ success: false, message: 'Not authorized, invalid or expired token' });
+      }
       
-      // Attach user to req, excluding password
       const user = await User.findById(decoded.userId).select('-password');
-      
       if (!user) {
          return res.status(401).json({ success: false, message: 'Not authorized, user not found' });
+      }
+
+      // Enforce email verification on all authenticated routes
+      if (!user.emailVerified) {
+         return res.status(403).json({ success: false, message: 'Please verify your email before accessing system resources.' });
       }
 
       req.user = user;

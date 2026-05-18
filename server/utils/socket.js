@@ -30,6 +30,11 @@ const initSocket = (server) => {
         return next(new Error('Authentication failed: User account not found.'));
       }
 
+      // STRICT SECURITY RULE: Enforce email verification for all websocket handshakes
+      if (!user.emailVerified) {
+        return next(new Error('Authentication failed: Email address is not verified.'));
+      }
+
       // Security terminal accounts are blocked from receiving notifications
       if (user.role === 'SECURITY') {
         socket.user = user;

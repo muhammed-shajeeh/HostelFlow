@@ -12,7 +12,9 @@ import {
   ArrowRight,
   Info,
   DollarSign,
-  Clock
+  Clock,
+  Mail,
+  AlertCircle
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
@@ -260,14 +262,25 @@ export default function StudentRegister() {
         {registeredSuccess ? (
           /* Confirmation Success Screen */
           <div className="max-w-xl mx-auto bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-6 shadow-xl animate-fadeIn">
-            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 mx-auto shadow-sm">
-              <CheckCircle2 className="w-9 h-9 stroke-[2]" />
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 border border-blue-100 mx-auto shadow-sm">
+              <Mail className="w-9 h-9 stroke-[2]" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900">Registration Submitted Successfully</h3>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900">Email Verification Required</h3>
               <p className="text-xs sm:text-sm text-slate-500 font-semibold max-w-sm mx-auto">
-                Your application has been logged and is currently under hostel administration review.
+                Your application has been received, but your account is currently <span className="text-amber-600 font-bold">UNVERIFIED</span>.
               </p>
+            </div>
+
+            {/* Mandatory Verification Banner */}
+            <div className="p-4 bg-amber-50 border border-amber-250 rounded-2xl text-left flex gap-3 items-start text-xs font-bold text-amber-800">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h5 className="font-extrabold uppercase tracking-wide text-[10px] text-amber-950">Verification is Mandatory</h5>
+                <p className="text-[10px] text-amber-700 font-semibold leading-relaxed mt-0.5">
+                  To prevent unauthorized accounts, you must verify your email address. You will <span className="underline">NOT</span> be able to sign in or be visible to warden approval flows until you verify your email.
+                </p>
+              </div>
             </div>
 
             <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 text-left text-xs font-bold text-slate-700 space-y-3">
@@ -285,26 +298,18 @@ export default function StudentRegister() {
                 <span className="text-slate-800">{formData.admissionNumber}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Selected Hostel:</span>
-                <span className="text-slate-800">
-                  {hostels.find(h => h._id === formData.hostelId)?.name || 'Default Hostel'}
-                </span>
+                <span className="text-slate-500">Verification Status:</span>
+                <span className="text-amber-600 font-extrabold">PENDING OTP VERIFICATION</span>
               </div>
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <div className="pt-2">
               <button
                 onClick={() => navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-sm text-xs cursor-pointer"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/10 text-xs cursor-pointer"
               >
                 Proceed to Verify Email <ArrowRight size={14} />
               </button>
-              <Link
-                to="/login"
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition flex items-center justify-center gap-1.5 border border-slate-200 text-xs"
-              >
-                Go to Sign In
-              </Link>
             </div>
           </div>
         ) : (

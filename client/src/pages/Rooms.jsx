@@ -29,6 +29,21 @@ export default function Rooms() {
 
   useEffect(() => {
     if (selectedHostel) fetchRooms(selectedHostel);
+
+    const handleRefresh = (e) => {
+      console.log('[Room Management] Live Real-time Refresh Event Triggered:', e.detail);
+      if (selectedHostel) fetchRooms(selectedHostel);
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    window.addEventListener('erp:roomTransferred', handleRefresh);
+    window.addEventListener('erp:studentApproved', handleRefresh);
+
+    return () => {
+      window.removeEventListener('erp:refresh', handleRefresh);
+      window.removeEventListener('erp:roomTransferred', handleRefresh);
+      window.removeEventListener('erp:studentApproved', handleRefresh);
+    };
   }, [selectedHostel]);
 
   const fetchInitData = async () => {

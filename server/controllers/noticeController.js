@@ -356,6 +356,16 @@ const updateNotice = async (req, res, next) => {
 
     await notice.save();
 
+    // Broadcast Socket triggers
+    const io = getIO();
+    if (notice.targetType === 'GLOBAL') {
+      io.emit('NOTICE_UPDATED', notice);
+      io.emit('REFRESH_DASHBOARD', { type: 'NOTICE_UPDATED' });
+    } else if (notice.hostelId) {
+      io.to(`HOSTEL_${notice.hostelId}`).emit('NOTICE_UPDATED', notice);
+      io.to(`HOSTEL_${notice.hostelId}`).emit('REFRESH_DASHBOARD', { type: 'NOTICE_UPDATED' });
+    }
+
     // If edited to become published now (and wasn't previously published)
     if (notice.isPublished && !wasPublished) {
       await dispatchNoticeNotifications(notice);
@@ -394,6 +404,16 @@ const deleteNotice = async (req, res, next) => {
     // Soft-delete: mark inactive
     notice.isActive = false;
     await notice.save();
+
+    // Broadcast Socket triggers
+    const io = getIO();
+    if (notice.targetType === 'GLOBAL') {
+      io.emit('NOTICE_DELETED', { _id: notice._id });
+      io.emit('REFRESH_DASHBOARD', { type: 'NOTICE_DELETED' });
+    } else if (notice.hostelId) {
+      io.to(`HOSTEL_${notice.hostelId}`).emit('NOTICE_DELETED', { _id: notice._id });
+      io.to(`HOSTEL_${notice.hostelId}`).emit('REFRESH_DASHBOARD', { type: 'NOTICE_DELETED' });
+    }
 
     res.status(200).json({ success: true, message: 'Notice removed successfully.' });
   } catch (error) {

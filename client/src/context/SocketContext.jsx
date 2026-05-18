@@ -160,6 +160,16 @@ export const SocketProvider = ({ children }) => {
       fetchBadgeSummary();
     });
 
+    newSocket.on('NOTICE_DELETED', (notice) => {
+      window.dispatchEvent(new CustomEvent('erp:noticeDeleted', { detail: notice }));
+      fetchBadgeSummary();
+    });
+
+    newSocket.on('NOTICE_UPDATED', (notice) => {
+      window.dispatchEvent(new CustomEvent('erp:noticeUpdated', { detail: notice }));
+      fetchBadgeSummary();
+    });
+
     newSocket.on('LEAVE_STATUS_UPDATED', (leave) => {
       window.dispatchEvent(new CustomEvent('erp:leaveUpdated', { detail: leave }));
       fetchBadgeSummary();

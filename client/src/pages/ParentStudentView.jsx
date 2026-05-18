@@ -32,6 +32,29 @@ export default function ParentStudentView() {
 
   useEffect(() => {
     fetchStudentDetails();
+
+    const handleRefresh = (e) => {
+      console.log('[Parent Student View] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchStudentDetails();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    window.addEventListener('erp:leaveUpdated', handleRefresh);
+    window.addEventListener('erp:complaintUpdated', handleRefresh);
+    window.addEventListener('erp:roomTransferred', handleRefresh);
+    window.addEventListener('erp:newNotice', handleRefresh);
+    window.addEventListener('erp:noticeDeleted', handleRefresh);
+    window.addEventListener('erp:noticeUpdated', handleRefresh);
+
+    return () => {
+      window.removeEventListener('erp:refresh', handleRefresh);
+      window.removeEventListener('erp:leaveUpdated', handleRefresh);
+      window.removeEventListener('erp:complaintUpdated', handleRefresh);
+      window.removeEventListener('erp:roomTransferred', handleRefresh);
+      window.removeEventListener('erp:newNotice', handleRefresh);
+      window.removeEventListener('erp:noticeDeleted', handleRefresh);
+      window.removeEventListener('erp:noticeUpdated', handleRefresh);
+    };
   }, [id]);
 
   const fetchStudentDetails = async () => {

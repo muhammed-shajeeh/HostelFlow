@@ -118,6 +118,23 @@ export default function Notices() {
 
   useEffect(() => {
     fetchNotices();
+
+    const handleRefresh = (e) => {
+      console.log('[Noticeboard Notices] Live Real-time Refresh Event Triggered:', e.detail);
+      fetchNotices();
+    };
+
+    window.addEventListener('erp:refresh', handleRefresh);
+    window.addEventListener('erp:newNotice', handleRefresh);
+    window.addEventListener('erp:noticeDeleted', handleRefresh);
+    window.addEventListener('erp:noticeUpdated', handleRefresh);
+
+    return () => {
+      window.removeEventListener('erp:refresh', handleRefresh);
+      window.removeEventListener('erp:newNotice', handleRefresh);
+      window.removeEventListener('erp:noticeDeleted', handleRefresh);
+      window.removeEventListener('erp:noticeUpdated', handleRefresh);
+    };
   }, []);
 
   // Separate emergency notices

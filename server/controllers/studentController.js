@@ -564,6 +564,16 @@ student.isApproved = false;
 
 await student.save();
 
+const { emitToRoom } = require('../utils/socket');
+emitToRoom(`HOSTEL_${student.hostelId}`, 'STUDENT_APPROVED', {
+  studentId: student._id,
+  fullName: student.fullName,
+  admissionNumber: student.admissionNumber,
+  hostelId: student.hostelId,
+  approvalStatus: 'REJECTED'
+});
+emitToRoom(`HOSTEL_${student.hostelId}`, 'REFRESH_DASHBOARD', { type: 'STUDENT_REJECTED' });
+
 // Log student rejected audit event
 const { logAudit } = require('../utils/auditLogger');
 await logAudit({
@@ -791,7 +801,8 @@ const getStudents = async (req, res, next) => {
 try {
 
 let query = {
-  role: 'STUDENT'
+  role: 'STUDENT',
+  emailVerified: true
 };
 
 if (req.user.role === 'WARDEN') {
@@ -837,7 +848,8 @@ try {
 
 let query = {
   role: 'STUDENT',
-  approvalStatus: 'PENDING'
+  approvalStatus: 'PENDING',
+  emailVerified: true
 };
 
 if (req.user.role === 'WARDEN') {
