@@ -8,7 +8,12 @@ const getBaseURL = () => {
     return base.endsWith('/api') ? base : `${base}/api`;
   }
   
-  // Environment-aware resolution (perfect for localhost, deployed Vercel, and Capacitor native platforms)
+  // For native mobile platform containers (Android/iOS), always route directly to the live production server!
+  if (Capacitor.isNativePlatform()) {
+    return 'https://hostelflow-mg85.onrender.com/api';
+  }
+  
+  // Environment-aware resolution for web-only localhost vs production Vercel
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     return 'http://localhost:5000/api';
   }

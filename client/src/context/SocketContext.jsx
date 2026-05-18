@@ -55,7 +55,12 @@ export const SocketProvider = ({ children }) => {
         return import.meta.env.VITE_API_URL.trim().replace(/\/api\/?$/, '').replace(/\/$/, '');
       }
       
-      // Environment-aware resolution for live production and localhost
+      // For native mobile platform containers (Android/iOS), always route directly to the live production server!
+      if (Capacitor.isNativePlatform()) {
+        return 'https://hostelflow-mg85.onrender.com';
+      }
+      
+      // Environment-aware resolution for web-only localhost vs production Vercel
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         return 'http://localhost:5000';
       }

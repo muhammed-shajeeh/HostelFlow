@@ -1,8 +1,12 @@
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:3000',
   'http://localhost:4173',
-  'http://localhost',       // Capacitor Android WebView container
-  'capacitor://localhost'   // Capacitor iOS WebView container
+  'http://localhost',         // Capacitor Android WebView container
+  'https://localhost',        // Capacitor Android Secure WebView container (CRITICAL MOBILITY FIX)
+  'capacitor://localhost',    // Capacitor iOS WebView container
+  'https://myhostelflow.vercel.app',
+  'https://hostelflow-seven.vercel.app'
 ];
 
 // Dynamically capture custom frontend URL if configured in server env
