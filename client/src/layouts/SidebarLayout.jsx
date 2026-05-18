@@ -149,7 +149,7 @@ export default function SidebarLayout() {
       {/* Mobile Sidebar Backdrop Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-30 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-black/60 z-30 md:hidden transition-opacity duration-300 sidebar-backdrop"
           onClick={closeSidebar}
         />
       )}

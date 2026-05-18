@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { App as CapacitorApp } from '@capacitor/app';
+import toast from 'react-hot-toast';
 
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -73,6 +75,91 @@ import WardenSecurityGate from './pages/WardenSecurityGate';
 import SecurityGateDashboard from './pages/SecurityGateDashboard';
 import NotFound from './pages/NotFound';
 
+const closeOpenOverlays = () => {
+  // 1. Mobile Sidebar backdrop
+  const sidebarBackdrop = document.querySelector('.sidebar-backdrop');
+  if (sidebarBackdrop) {
+    sidebarBackdrop.click();
+    return true;
+  }
+
+  // 2. Modals and Dialogs (Reassign Room, Status Updates, Rejection modals)
+  const modalBackdrop = document.querySelector('.fixed.inset-0.z-50, div[class*="fixed"][class*="inset-0"][class*="bg-black/60"], div[class*="fixed"][class*="inset-0"][class*="bg-slate-950/70"]');
+  if (modalBackdrop) {
+    // Try to find a close button inside the modal and click it
+    const closeBtn = modalBackdrop.querySelector('button[class*="close"], button:has(svg[class*="lucide-x"]), button[class*="cancel"]');
+    if (closeBtn) {
+      closeBtn.click();
+      return true;
+    }
+    // Try scanning for any button with an SVG close icon
+    const svgCloseBtn = Array.from(modalBackdrop.querySelectorAll('button')).find(btn => btn.querySelector('svg'));
+    if (svgCloseBtn) {
+      svgCloseBtn.click();
+      return true;
+    }
+    // Fallback: click backdrop overlay to trigger dismissal
+    modalBackdrop.click();
+    return true;
+  }
+
+  return false;
+};
+
+function HardwareBackHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let lastTime = 0;
+
+    const backButtonHandler = CapacitorApp.addListener('backButton', () => {
+      // 1. First priority: close mobile sidebar/modals/dialogs/drawers
+      const wasOverlayOpen = closeOpenOverlays();
+      if (wasOverlayOpen) {
+        return;
+      }
+
+      // 2. Identify if the current route is considered a root page where exiting is expected
+      const rootPaths = ['/', '/login', '/warden', '/student', '/admin', '/parent', '/security'];
+      const isRootPath = rootPaths.includes(location.pathname);
+
+      if (isRootPath) {
+        // Exiting confirmation mechanism
+        const now = Date.now();
+        if (now - lastTime < 2000) {
+          CapacitorApp.exitApp();
+        } else {
+          lastTime = now;
+          toast('Press back again to exit', {
+            icon: '🚪',
+            duration: 2000,
+            style: {
+              background: '#0f172a',
+              color: '#ffffff',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              borderRadius: '12px',
+              border: '1px solid #1e293b'
+            }
+          });
+        }
+      } else {
+        // Safe route back navigation
+        navigate(-1);
+      }
+    });
+
+    return () => {
+      backButtonHandler.remove();
+    };
+  }, [location, navigate]);
+
+  return null;
+}
+
 function App() {
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
@@ -108,9 +195,10 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <BrowserRouter>
-        <Toaster position="top-right" />
-        <Routes>
-          <Route path="/" element={<Landing />} />
+            <HardwareBackHandler />
+            <Toaster position="top-right" />
+            <Routes>
+              <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<StudentRegister />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
