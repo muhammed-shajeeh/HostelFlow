@@ -11,6 +11,7 @@ import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import NavbarLayout from './layouts/NavbarLayout';
 import SidebarLayout from './layouts/SidebarLayout';
@@ -192,10 +193,11 @@ function App() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <SocketProvider>
-          <BrowserRouter>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <SocketProvider>
+            <BrowserRouter>
             <HardwareBackHandler />
             <Toaster 
               position="top-right" 
@@ -304,10 +306,11 @@ function App() {
           {/* Catch-all 404 Route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-        </BrowserRouter>
-      </SocketProvider>
-    </AuthProvider>
-  </ThemeProvider>
+          </BrowserRouter>
+        </SocketProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  </ErrorBoundary>
 );
 }
 
