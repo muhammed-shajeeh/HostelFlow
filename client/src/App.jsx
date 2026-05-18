@@ -35,7 +35,6 @@ import StudentDashboard from './pages/StudentDashboard';
 
 // Leave Management
 import StudentLeaveRequest from './pages/StudentLeaveRequest';
-import StudentLeaveHistory from './pages/StudentLeaveHistory';
 import PendingLeaves from './pages/PendingLeaves';
 import LeaveHistory from './pages/LeaveHistory';
 import QRScanner from './pages/QRScanner';
@@ -294,7 +293,7 @@ function App() {
                 
                 {/* Leave Management (Student) */}
                 <Route path="/student/leaves/request" element={<StudentLeaveRequest />} />
-                <Route path="/student/leaves/history" element={<StudentLeaveHistory />} />
+                <Route path="/student/leaves/history" element={<StudentLeaveRequest />} />
                 
                 {/* Attendance (Student) */}
                 <Route path="/student/attendance" element={<StudentAttendance />} />
