@@ -123,6 +123,13 @@ export default function ComplaintManagement() {
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchComplaints = async () => {
     setLoading(true);
@@ -233,6 +240,57 @@ export default function ComplaintManagement() {
           <div className="text-4xl mb-3">✅</div>
           <div className="font-bold text-lg">No complaints found</div>
           <p className="text-sm mt-1">No complaints match the current filters.</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-4">
+          {complaints.map(c => (
+            <div
+              key={c._id}
+              className={`bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition ${
+                c.priority === 'URGENT' ? 'border-l-4 border-l-red-500' :
+                c.priority === 'HIGH' ? 'border-l-4 border-l-orange-400' : ''
+              }`}
+            >
+              <div className="space-y-3">
+                <div className="flex flex-wrap justify-between items-start gap-2">
+                  <div>
+                    <h3 className="font-black text-gray-900 text-base leading-tight">{c.title}</h3>
+                    <p className="text-xs text-gray-400 mt-1">{c.description}</p>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    <StatusBadge status={c.status} />
+                    <PriorityBadge priority={c.priority} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-100 text-xs text-gray-650">
+                  <div>
+                    <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Student Info</span>
+                    <span className="font-bold text-gray-800">{c.studentId?.fullName || '—'}</span>
+                    <span className="block text-[10px] text-gray-400 mt-0.5">Room {c.roomId?.roomNumber || '?'} · F{c.roomId?.floor || '?'}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Category & Date</span>
+                    <span className="font-bold text-gray-800">{c.category?.replace('_', ' ')}</span>
+                    <span className="block text-[10px] text-gray-400 mt-0.5">Submitted: {new Date(c.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2">
+                {c.status !== 'RESOLVED' && c.status !== 'REJECTED' ? (
+                  <button
+                    onClick={() => openStatusModal(c)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                  >
+                    Update Status
+                  </button>
+                ) : (
+                  <span className="w-full text-center text-xs text-gray-400 italic py-2">Closed / Processed</span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="bg-white border rounded-lg shadow-sm overflow-hidden">

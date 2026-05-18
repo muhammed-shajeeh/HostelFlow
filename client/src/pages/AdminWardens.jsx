@@ -25,6 +25,13 @@ export default function AdminWardens() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -169,6 +176,75 @@ export default function AdminWardens() {
       {loading ? (
         <div className="text-center p-12 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl text-slate-550 dark:text-zinc-400 font-bold">
           Loading warden directories...
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-4">
+          {wardens.map(warden => (
+            <div key={warden._id} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition text-slate-800 dark:text-zinc-150">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{warden.fullName}</h3>
+                    <p className="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5">{warden.email}</p>
+                  </div>
+                  {warden.isActive !== false ? (
+                    <span className="inline-flex items-center gap-1 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full text-[10px] font-black border border-green-150 dark:border-green-500/20">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 bg-slate-50 dark:bg-zinc-800/40 text-slate-500 dark:text-zinc-450 px-2 py-0.5 rounded-full text-[10px] font-black border border-slate-200 dark:border-zinc-850">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+
+                <div className="pt-2.5 border-t border-slate-100 dark:border-zinc-800 text-xs">
+                  <span className="block text-[10px] text-slate-400 dark:text-zinc-500 font-black uppercase tracking-wider mb-1">Assigned Hostel</span>
+                  {warden.hostelId ? (
+                    <span className="inline-flex items-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-650 dark:text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-black border border-blue-100 dark:border-blue-500/20">
+                      <Home size={10} />
+                      {warden.hostelId.name} ({warden.hostelId.hostelCode})
+                    </span>
+                  ) : (
+                    <span className="inline-flex bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-450 px-2.5 py-1 rounded-lg text-[10px] font-black border border-rose-100 dark:border-rose-500/20">
+                      Unassigned
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex gap-2">
+                {warden.isActive !== false ? (
+                  <>
+                    <button
+                      onClick={() => handleEditClick(warden)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-zinc-850 dark:text-zinc-200 dark:hover:bg-zinc-800 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                    >
+                      <Edit2 size={13} /> Edit Details
+                    </button>
+                    <button
+                      onClick={() => handleDeactivateClick(warden)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 dark:hover:bg-amber-950/40 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                    >
+                      <Trash2 size={13} /> Deactivate
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleReactivateClick(warden)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-sm"
+                  >
+                    Reactivate
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {wardens.length === 0 && (
+            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-12 text-center text-slate-450 dark:text-zinc-500 font-bold italic">
+              No wardens mapped in the directory.
+            </div>
+          )}
         </div>
       ) : (
         <div className="overflow-hidden bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm">

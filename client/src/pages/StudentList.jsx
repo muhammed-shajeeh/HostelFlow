@@ -19,6 +19,13 @@ export default function StudentList() {
   const [showHistory, setShowHistory] = useState(false);
   const [historyList, setHistoryList] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     fetchStudents();
@@ -166,6 +173,67 @@ export default function StudentList() {
           <RefreshCw className="animate-spin inline-block mr-2 text-blue-500" size={24} />
           Retrieving approved resident profiles...
         </div>
+      ) : isMobile ? (
+        <div className="space-y-4">
+          {students.map(student => (
+            <div key={student._id} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition text-slate-800 dark:text-zinc-150">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-black text-slate-900 dark:text-white text-base leading-tight">{student.fullName}</h3>
+                    <p className="text-[11px] text-slate-400 dark:text-zinc-500 font-mono mt-0.5">{student.email}</p>
+                  </div>
+                  {student.roomId ? (
+                    <span className="bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-900 px-2.5 py-1 rounded-lg font-black text-[10px] uppercase">
+                      Room: {student.roomId.roomNumber}
+                    </span>
+                  ) : (
+                    <span className="bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-950 px-2.5 py-1 rounded-lg font-black text-[10px] uppercase">
+                      Not Allocated
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-slate-100 dark:border-zinc-855 text-xs text-slate-650 dark:text-zinc-400">
+                  <div>
+                    <span className="block text-[10px] text-slate-450 dark:text-zinc-500 font-black uppercase tracking-wider mb-0.5">Admission No</span>
+                    <span className="font-extrabold text-slate-800 dark:text-zinc-200">{student.admissionNumber}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-slate-450 dark:text-zinc-500 font-black uppercase tracking-wider mb-0.5">Department</span>
+                    <span className="font-extrabold text-slate-800 dark:text-zinc-200">{student.department}</span>
+                  </div>
+                  {student.roomId && (
+                    <>
+                      <div>
+                        <span className="block text-[10px] text-slate-450 dark:text-zinc-500 font-black uppercase tracking-wider mb-0.5">Bed Number</span>
+                        <span className="font-extrabold text-slate-800 dark:text-zinc-200">Bed {student.bedNumber}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-slate-450 dark:text-zinc-500 font-black uppercase tracking-wider mb-0.5">Floor Level</span>
+                        <span className="font-extrabold text-slate-800 dark:text-zinc-200">Floor {student.roomId.floor}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex gap-2">
+                <button
+                  onClick={() => openReassignModal(student)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-55 hover:bg-blue-100 text-blue-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-750 px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                >
+                  <ArrowLeftRight size={13} /> Reassign Room
+                </button>
+              </div>
+            </div>
+          ))}
+          {students.length === 0 && (
+            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-12 text-center text-slate-450 dark:text-zinc-500 font-bold italic">
+              No approved active hostel residents found.
+            </div>
+          )}
+        </div>
       ) : (
         <div className="overflow-hidden bg-white dark:bg-zinc-900 rounded-2xl shadow-xs border border-slate-100 dark:border-zinc-800">
           <div className="overflow-x-auto">
@@ -220,7 +288,7 @@ export default function StudentList() {
                 ))}
                 {students.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-slate-400 dark:text-zinc-500">
+                    <td colSpan="5" className="px-6 py-12 text-center text-slate-450 dark:text-zinc-500">
                       No approved active hostel residents found.
                     </td>
                   </tr>
