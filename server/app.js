@@ -23,6 +23,9 @@ const auditRoutes = require('./routes/auditRoutes');
 
 const app = express();
 
+// Configure proxy awareness for Render load balancers
+app.set('trust proxy', 1);
+
 // Security middleware & CORS configuration
 const { corsOptions } = require('./utils/corsConfig');
 app.use(helmet());

@@ -40,7 +40,7 @@ const markAsRead = async (req, res, next) => {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, recipientId: req.user._id },
       { isRead: true },
-      { new: true }
+      { returnDocument: 'after' }
     );
     
     if (!notification) {
@@ -98,7 +98,7 @@ const registerDeviceToken = async (req, res, next) => {
         deviceType,
         lastActiveAt: new Date()
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     res.status(200).json({ success: true, message: 'Device token registered successfully.', token: tokenDoc });
