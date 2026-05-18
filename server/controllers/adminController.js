@@ -365,11 +365,288 @@ const reactivateWarden = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// @desc    Search students for transfer
+// @route   GET /api/admin/students/search
+// @access  Private (Admin only)
+const searchStudentsForTransfer = async (req, res, next) => {
+  try {
+    const { query } = req.query;
+    if (!query || query.trim() === '') {
+      return res.status(200).json({ success: true, students: [] });
+    }
+
+    const searchRegex = new RegExp(query, 'i');
+    const Room = require('../models/Room');
+
+    // 1. Search for matching rooms
+    const matchingRooms = await Room.find({ roomNumber: searchRegex }).select('_id');
+    const roomIds = matchingRooms.map(r => r._id);
+
+    // 2. Query matching students
+    const matchQuery = {
+      role: 'STUDENT',
+      approvalStatus: 'APPROVED',
+      isActive: true,
+      $or: [
+        { fullName: searchRegex },
+        { admissionNumber: searchRegex }
+      ]
+    };
+
+    if (roomIds.length > 0) {
+      matchQuery.$or.push({ roomId: { $in: roomIds } });
+    }
+
+    const students = await User.find(matchQuery)
+      .populate('hostelId', 'name gender')
+      .populate('roomId', 'roomNumber floor')
+      .lean();
+
+    res.status(200).json({ success: true, students });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Transfer student atomically
+// @route   POST /api/admin/students/:id/transfer
+// @access  Private (Admin only)
+const transferStudent = async (req, res, next) => {
+  const { newHostelId, newRoomId, newBedNumber, reason } = req.body;
+
+  try {
+    const Room = require('../models/Room');
+    const RoomTransfer = require('../models/RoomTransfer');
+
+    const student = await User.findById(req.params.id);
+    if (!student || student.role !== 'STUDENT') {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+
+    if (!student.isApproved || student.approvalStatus !== 'APPROVED') {
+      return res.status(400).json({ success: false, message: 'Cannot transfer a student who is not approved/allocated.' });
+    }
+
+    if (!student.isActive) {
+      return res.status(400).json({ success: false, message: 'Cannot transfer an inactive student.' });
+    }
+
+    const oldHostelId = student.hostelId;
+    const oldRoomId = student.roomId;
+    const oldBedNumber = student.bedNumber;
+
+    // Check same room/bed transfer
+    if (oldRoomId && oldRoomId.toString() === newRoomId.toString() && oldBedNumber === Number(newBedNumber)) {
+      return res.status(400).json({ success: false, message: 'Student is already assigned to this room and bed.' });
+    }
+
+    // Validate target Hostel
+    const destinationHostel = await Hostel.findById(newHostelId);
+    if (!destinationHostel || !destinationHostel.isActive) {
+      return res.status(404).json({ success: false, message: 'Destination hostel not found or inactive.' });
+    }
+
+    // Validate source Hostel
+    const sourceHostel = oldHostelId ? await Hostel.findById(oldHostelId) : null;
+    if (sourceHostel) {
+      // Prevent gender mismatch
+      if (sourceHostel.gender !== destinationHostel.gender && destinationHostel.gender !== 'MIXED' && sourceHostel.gender !== 'MIXED') {
+        return res.status(400).json({ success: false, message: `Gender mismatch! Cannot transfer from ${sourceHostel.gender} hostel to ${destinationHostel.gender} hostel.` });
+      }
+    }
+
+    // Validate target Room
+    const newRoom = await Room.findById(newRoomId);
+    if (!newRoom || !newRoom.isActive) {
+      return res.status(404).json({ success: false, message: 'Destination room not found or inactive.' });
+    }
+
+    if (newRoom.hostelId.toString() !== newHostelId.toString()) {
+      return res.status(400).json({ success: false, message: 'Destination room does not belong to the selected destination hostel.' });
+    }
+
+    // Validate bed availability
+    if (Number(newBedNumber) < 1 || Number(newBedNumber) > newRoom.capacity) {
+      return res.status(400).json({ success: false, message: `Invalid bed number! Bed number must be between 1 and ${newRoom.capacity}.` });
+    }
+
+    // Check if target bed is already occupied by another student
+    const occupantOnTargetBed = await User.findOne({
+      roomId: newRoomId,
+      bedNumber: Number(newBedNumber),
+      role: 'STUDENT',
+      _id: { $ne: student._id }
+    });
+    if (occupantOnTargetBed) {
+      return res.status(400).json({ success: false, message: `Bed number ${newBedNumber} is already occupied by ${occupantOnTargetBed.fullName}.` });
+    }
+
+    // If transferring to a different room, ensure capacity isn't exceeded
+    if (!oldRoomId || oldRoomId.toString() !== newRoomId.toString()) {
+      if (newRoom.availableBeds <= 0 || newRoom.occupiedBeds >= newRoom.capacity) {
+        return res.status(400).json({ success: false, message: 'Destination room is at full capacity.' });
+      }
+    }
+
+    const oldRoom = oldRoomId ? await Room.findById(oldRoomId) : null;
+
+    // 1. Remove from old room if exists
+    if (oldRoom) {
+      oldRoom.students.pull(student._id);
+      oldRoom.occupiedBeds = Math.max(0, oldRoom.occupiedBeds - 1);
+      oldRoom.availableBeds = oldRoom.capacity - oldRoom.occupiedBeds;
+      await oldRoom.save();
+    }
+
+    // 2. Add to new room
+    if (!oldRoomId || oldRoomId.toString() !== newRoomId.toString()) {
+      newRoom.students.push(student._id);
+      newRoom.occupiedBeds += 1;
+      newRoom.availableBeds = newRoom.capacity - newRoom.occupiedBeds;
+      await newRoom.save();
+    }
+
+    // 3. Update Student document
+    student.hostelId = newHostelId;
+    student.roomId = newRoomId;
+    student.bedNumber = Number(newBedNumber);
+    await student.save();
+
+    // 4. Save to persistent transfer history
+    const transferHistory = new RoomTransfer({
+      studentId: student._id,
+      oldHostelId: oldHostelId || null,
+      newHostelId: newHostelId,
+      oldRoomId: oldRoomId || null,
+      newRoomId: newRoomId,
+      oldBedNumber: oldBedNumber || null,
+      newBedNumber: Number(newBedNumber),
+      transferredBy: req.user._id,
+      reason: reason || 'Administrative hostel reassignment'
+    });
+    await transferHistory.save();
+
+    // 5. Generate Audit Logs
+    const { logAudit } = require('../utils/auditLogger');
+    const oldRoomNumber = oldRoom ? oldRoom.roomNumber : 'Unassigned';
+    const oldHostelName = sourceHostel ? sourceHostel.name : 'Unassigned';
+    await logAudit({
+      req,
+      actionType: 'HOSTEL_TRANSFER',
+      entityType: 'USER',
+      entityId: student._id,
+      title: 'Student Hostel Transfer',
+      description: `Student ${student.fullName} transferred from ${oldHostelName} Room ${oldRoomNumber} (Bed ${oldBedNumber || 'N/A'}) to ${destinationHostel.name} Room ${newRoom.roomNumber} (Bed ${newBedNumber}). Reason: ${reason || 'Administrative choice'}`,
+      severity: 'IMPORTANT',
+      hostelId: newHostelId
+    });
+
+    // 6. Trigger Real-time Notifications & Sockets
+    const { createAndEmitNotification, emitToRoom } = require('../utils/socket');
+    
+    // Notify Student
+    await createAndEmitNotification({
+      recipientId: student._id,
+      title: 'Hostel Transfer Completed',
+      message: `Your hostel allocation has been shifted from ${oldHostelName} Room ${oldRoomNumber} to ${destinationHostel.name} Room ${newRoom.roomNumber} (Bed ${newBedNumber}).`,
+      type: 'ROOM_TRANSFER',
+      priority: 'CRITICAL',
+      relatedEntityId: newRoomId,
+      actionUrl: '/student',
+      hostelId: newHostelId
+    });
+
+    // Notify Wardens of BOTH old and new hostels
+    const wardensToNotify = [];
+    if (sourceHostel && sourceHostel.warden) wardensToNotify.push(sourceHostel.warden);
+    if (destinationHostel.warden && !wardensToNotify.includes(destinationHostel.warden)) {
+      wardensToNotify.push(destinationHostel.warden);
+    }
+
+    for (const wardenId of wardensToNotify) {
+      await createAndEmitNotification({
+        recipientId: wardenId,
+        title: 'Student Transferred',
+        message: `Student ${student.fullName} has been transferred from ${oldHostelName} Room ${oldRoomNumber} to ${destinationHostel.name} Room ${newRoom.roomNumber}.`,
+        type: 'ROOM_TRANSFER',
+        priority: 'IMPORTANT',
+        relatedEntityId: newRoomId,
+        actionUrl: '/students/list',
+        hostelId: newHostelId
+      });
+    }
+
+    // Refresh dashboards in both old and new hostels in real-time
+    if (oldHostelId) {
+      emitToRoom(`HOSTEL_${oldHostelId}`, 'REFRESH_DASHBOARD', { type: 'ROOM_ALLOCATION' });
+    }
+    emitToRoom(`HOSTEL_${newHostelId}`, 'REFRESH_DASHBOARD', { type: 'ROOM_ALLOCATION' });
+    emitToRoom('ADMIN_GLOBAL', 'REFRESH_DASHBOARD', { type: 'ROOM_ALLOCATION' });
+
+    // Send email notification to Student
+    sendEmail({
+      email: student.email,
+      subject: 'Official Hostel Transfer Confirmation - HostelFlow',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h3 style="color: #4f46e5;">Official Hostel Transfer Completed</h3>
+          <p>Dear ${student.fullName},</p>
+          <p>This is to officially confirm that your hostel allocation has been reassigned by the administration:</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr style="background: #f9fafb;">
+              <th style="padding: 10px; border: 1px solid #eee; text-align: left;">Details</th>
+              <th style="padding: 10px; border: 1px solid #eee; text-align: left;">From</th>
+              <th style="padding: 10px; border: 1px solid #eee; text-align: left;">To</th>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #eee;"><strong>Hostel</strong></td>
+              <td style="padding: 10px; border: 1px solid #eee;">${oldHostelName}</td>
+              <td style="padding: 10px; border: 1px solid #eee;">${destinationHostel.name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #eee;"><strong>Room</strong></td>
+              <td style="padding: 10px; border: 1px solid #eee;">${oldRoomNumber}</td>
+              <td style="padding: 10px; border: 1px solid #eee;">${newRoom.roomNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #eee;"><strong>Bed</strong></td>
+              <td style="padding: 10px; border: 1px solid #eee;">${oldBedNumber || 'N/A'}</td>
+              <td style="padding: 10px; border: 1px solid #eee;">${newBedNumber}</td>
+            </tr>
+          </table>
+          <p><strong>Reason for Transfer:</strong> ${reason || 'Administrative adjustment'}</p>
+          <p>Please shift your belongings to your new room allocation at your earliest convenience.</p>
+          <p>Regards,<br>Hostel Administration</p>
+        </div>
+      `
+    }).catch(emailError => {
+      console.warn(`[MAILER] Hostel transfer email failed for ${student.email} — database update preserved.`);
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Student hostel transfer completed successfully.',
+      student: {
+        _id: student._id,
+        fullName: student.fullName,
+        hostelId: student.hostelId,
+        roomId: student.roomId,
+        bedNumber: student.bedNumber
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createWarden,
   getAdminDashboard,
   getWardensList,
   updateWarden,
   deleteWarden,
-  reactivateWarden
+  reactivateWarden,
+  searchStudentsForTransfer,
+  transferStudent
 };

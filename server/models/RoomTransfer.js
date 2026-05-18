@@ -6,6 +6,14 @@ const RoomTransferSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  oldHostelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hostel'
+  },
+  newHostelId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hostel'
+  },
   oldRoomId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Room'
@@ -14,6 +22,12 @@ const RoomTransferSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Room',
     required: true
+  },
+  oldBedNumber: {
+    type: Number
+  },
+  newBedNumber: {
+    type: Number
   },
   transferredBy: {
     type: mongoose.Schema.Types.ObjectId,
