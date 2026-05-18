@@ -2,7 +2,7 @@ const express = require('express');
 const { check } = require('express-validator');
 const { 
   registerStudent, approveStudent, rejectStudent, changeRoom, 
-  getStudents, getPendingStudents, getSingleStudent 
+  getStudents, getPendingStudents, getSingleStudent, getRoomTransferHistory
 } = require('../controllers/studentController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
@@ -29,6 +29,7 @@ router.use(roleMiddleware('ADMIN', 'WARDEN'));
 
 router.get('/', getStudents);
 router.get('/pending', getPendingStudents);
+router.get('/room-transfers/history', getRoomTransferHistory);
 router.get('/:id', getSingleStudent);
 
 router.post('/:id/approve', approveStudent);

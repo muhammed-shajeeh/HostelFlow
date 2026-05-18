@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Room = require('../models/Room');
 const Hostel = require('../models/Hostel');
+const RoomTransfer = require('../models/RoomTransfer');
 const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
 const sendEmail = require('../utils/email');
@@ -595,115 +596,157 @@ next(error);
 // ======================================================
 
 const changeRoom = async (req, res, next) => {
+  try {
+    const { newRoomId, reason } = req.body;
 
-try {
+    const student = await User.findById(req.params.id);
+    if (!student || student.role !== 'STUDENT') {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
 
+    if (
+      req.user.role === 'WARDEN' &&
+      req.user.hostelId.toString() !== student.hostelId.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden'
+      });
+    }
 
-const { newRoomId } = req.body;
+    const newRoom = await Room.findById(newRoomId);
+    if (!newRoom || newRoom.availableBeds <= 0 || !newRoom.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'New room unavailable or at full occupancy capacity'
+      });
+    }
 
-const student = await User.findById(req.params.id);
+    const oldRoomId = student.roomId;
+    const oldRoom = oldRoomId ? await Room.findById(oldRoomId) : null;
 
-if (!student || student.role !== 'STUDENT') {
+    // Remove from old room
+    if (oldRoom) {
+      oldRoom.students.pull(student._id);
+      oldRoom.occupiedBeds = Math.max(0, oldRoom.occupiedBeds - 1);
+      oldRoom.availableBeds = oldRoom.capacity - oldRoom.occupiedBeds;
+      await oldRoom.save();
+    }
 
-  return res.status(404).json({
-    success: false,
-    message: 'Student not found'
-  });
+    // Add to new room
+    newRoom.students.push(student._id);
+    newRoom.occupiedBeds += 1;
+    newRoom.availableBeds = newRoom.capacity - newRoom.occupiedBeds;
+    await newRoom.save();
 
-}
+    // Assign new bed
+    const newBedNumber = await assignNextBed(newRoom._id, newRoom.capacity);
 
-if (
-  req.user.role === 'WARDEN' &&
-  req.user.hostelId.toString() !== student.hostelId.toString()
-) {
+    student.roomId = newRoom._id;
+    student.bedNumber = newBedNumber;
+    await student.save();
 
-  return res.status(403).json({
-    success: false,
-    message: 'Forbidden'
-  });
+    // Preserve Room Shifting History Entry
+    const transferLog = new RoomTransfer({
+      studentId: student._id,
+      oldRoomId: oldRoomId || null,
+      newRoomId: newRoom._id,
+      transferredBy: req.user._id,
+      reason: reason || 'Dynamic room assignment'
+    });
+    await transferLog.save();
 
-}
+    // Notify affected student in real-time
+    const { createAndEmitNotification, emitToRoom } = require('../utils/socket');
+    const oldRoomNumber = oldRoom ? oldRoom.roomNumber : 'Unassigned';
+    await createAndEmitNotification({
+      recipientId: student._id,
+      title: 'Room Reassigned',
+      message: `Your hostel room has been shifted from ${oldRoomNumber} to ${newRoom.roomNumber} (bed ${newBedNumber}) by Warden.`,
+      type: 'ROOM_TRANSFER',
+      priority: 'IMPORTANT',
+      relatedEntityId: newRoom._id,
+      actionUrl: '/student',
+      hostelId: student.hostelId
+    });
 
-const newRoom = await Room.findById(newRoomId);
+    // Notify other portal users in the hostel in real-time to trigger instant dashboard/occupancy updates
+    emitToRoom(`HOSTEL_${student.hostelId}`, 'REFRESH_DASHBOARD', { type: 'ROOM_ALLOCATION' });
 
-if (
-  !newRoom ||
-  newRoom.availableBeds <= 0
-) {
+    // Log atomic audit log for tracebility
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'ROOM_REASSIGNED',
+      entityType: 'USER',
+      entityId: student._id,
+      title: 'Room Reassigned',
+      description: `Student ${student.fullName} room changed from ${oldRoomNumber} to ${newRoom.roomNumber} (bed ${newBedNumber}). Reason: ${reason || 'Warden choice'}`,
+      severity: 'IMPORTANT',
+      hostelId: student.hostelId
+    });
 
-  return res.status(400).json({
-    success: false,
-    message: 'New room unavailable'
-  });
+    // Email notification
+    sendEmail({
+      email: student.email,
+      subject: 'Room Changed - Smart Hostel',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+          <h3 style="color: #4f46e5;">Room Shifting Completed</h3>
+          <p>Dear ${student.fullName},</p>
+          <p>This is to officially inform you that your hostel room has been shifted:</p>
+          <ul>
+            <li><strong>Previous Room:</strong> ${oldRoomNumber}</li>
+            <li><strong>New Room:</strong> ${newRoom.roomNumber} (Bed ${newBedNumber})</li>
+            <li><strong>Transferred By:</strong> ${req.user.fullName}</li>
+            <li><strong>Reason:</strong> ${reason || 'Operational adjustment'}</li>
+          </ul>
+          <p>Please shift your belongings to the new room at your earliest convenience.</p>
+          <p>Regards,<br>Hostel Administration</p>
+        </div>
+      `
+    }).catch(emailError => {
+      console.warn(`[MAILER] Room change email failed for ${student.email} — database update preserved.`);
+    });
 
-}
+    res.status(200).json({
+      success: true,
+      message: `Student successfully reassigned to Room ${newRoom.roomNumber}`,
+      newRoomNumber: newRoom.roomNumber,
+      newBedNumber
+    });
 
-// Remove from old room
-const oldRoom = await Room.findById(student.roomId);
+  } catch (error) {
+    next(error);
+  }
+};
 
-if (oldRoom) {
+const getRoomTransferHistory = async (req, res, next) => {
+  try {
+    let query = {};
+    if (req.user.role === 'WARDEN') {
+      const students = await User.find({ hostelId: req.user.hostelId, role: 'STUDENT' }).select('_id');
+      const studentIds = students.map(s => s._id);
+      query = { studentId: { $in: studentIds } };
+    }
+    const history = await RoomTransfer.find(query)
+      .populate('studentId', 'fullName email admissionNumber')
+      .populate('oldRoomId', 'roomNumber floor')
+      .populate('newRoomId', 'roomNumber floor')
+      .populate('transferredBy', 'fullName role')
+      .sort({ transferredAt: -1 })
+      .lean();
 
-  oldRoom.students.pull(student._id);
-
-  oldRoom.occupiedBeds -= 1;
-
-  oldRoom.availableBeds =
-    oldRoom.capacity - oldRoom.occupiedBeds;
-
-  await oldRoom.save();
-
-}
-
-// Add to new room
-newRoom.students.push(student._id);
-
-newRoom.occupiedBeds += 1;
-
-newRoom.availableBeds =
-  newRoom.capacity - newRoom.occupiedBeds;
-
-await newRoom.save();
-
-// Assign new bed
-const newBedNumber = await assignNextBed(
-  newRoom._id,
-  newRoom.capacity
-);
-
-student.roomId = newRoom._id;
-
-student.bedNumber = newBedNumber;
-
-await student.save();
-
-// Email
-  // Optimization: Send email asynchronously
-  sendEmail({
-    email: student.email,
-    subject: 'Room Changed',
-    html: `
-      <p>
-        You have been moved to
-        Room ${newRoom.roomNumber}
-      </p>
-    `
-  }).catch(emailError => {
-    console.warn(`[MAILER] Room change email failed for ${student.email} — database update preserved.`);
-  });
-
-res.status(200).json({
-  success: true,
-  message: 'Room changed successfully'
-});
-
-} catch (error) {
-
-
-next(error);
-
-
-}
-
+    res.status(200).json({
+      success: true,
+      history
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // ======================================================
@@ -840,5 +883,6 @@ rejectStudent,
 changeRoom,
 getStudents,
 getPendingStudents,
-getSingleStudent
+getSingleStudent,
+getRoomTransferHistory
 };
