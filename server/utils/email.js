@@ -1,4 +1,10 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
+
+// Force Node.js DNS resolver to prioritize IPv4 resolutions globally across all network modules
+if (typeof dns.setDefaultResultOrder === "function") {
+    dns.setDefaultResultOrder("ipv4first");
+}
 
 const sendEmail = async (options) => {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -7,23 +13,36 @@ const sendEmail = async (options) => {
         throw err;
     }
 
-    console.log(`[MAILER] Initializing secure SMTP transport: smtp.gmail.com | Protocol: STARTTLS (587) | Force IPv4 resolution: enabled`);
+    let smtpHost = "smtp.gmail.com";
+    try {
+        // Perform an explicit IPv4-only A-record DNS query to bypass AAAA (IPv6) completely
+        const ips = await dns.promises.resolve4("smtp.gmail.com");
+        if (ips && ips.length > 0) {
+            smtpHost = ips[0];
+            console.log(`[MAILER] DNS resolved A-Record of smtp.gmail.com to IPv4: ${smtpHost}`);
+        }
+    } catch (dnsError) {
+        console.warn("[MAILER] IPv4 DNS A-Record query failed, falling back to hostname:", dnsError.message);
+    }
+
+    console.log(`[MAILER] Initializing secure SMTP transport: ${smtpHost} (SNI: smtp.gmail.com) | Protocol: STARTTLS (587)`);
 
     const transporter = nodemailer.createTransport({
-        host: "smtp.gmail.com",
+        host: smtpHost,
         port: 587,
-        secure: false, // Use STARTTLS upgrade on port 587 instead of strict port 465
-        family: 4, // STRICTLY enforce Node DNS lookup to resolve IPv4 addresses (A records) only, avoiding problematic IPv6 routing
+        secure: false, // Use STARTTLS upgrade
+        family: 4, // Restrict connection socket to IPv4
         auth: {
             user: process.env.EMAIL_USER.trim(),
             pass: process.env.EMAIL_PASS.trim()
         },
         tls: {
-            rejectUnauthorized: false
+            rejectUnauthorized: false,
+            servername: "smtp.gmail.com" // Crucial: forces SSL Server Name Indication matching for smtp.gmail.com when connecting via direct IP
         },
-        connectionTimeout: 10000, // 10 seconds connection timeout
-        greetingTimeout: 10000,   // 10 seconds SMTP greeting greeting timeout
-        socketTimeout: 15000       // 15 seconds socket inactivity timeout
+        connectionTimeout: 15000, // 15 seconds connection timeout
+        greetingTimeout: 15000,   // 15 seconds greeting timeout
+        socketTimeout: 20000       // 20 seconds socket inactivity timeout
     });
 
     try {
