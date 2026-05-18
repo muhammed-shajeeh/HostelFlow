@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App as CapacitorApp } from '@capacitor/app';
+import { SplashScreen } from '@capacitor/splash-screen';
 import toast from 'react-hot-toast';
 
 import { AuthProvider } from './context/AuthContext';
@@ -187,6 +188,19 @@ function App() {
         attributes: true,
         attributeFilter: ['class']
       });
+
+      // Manually hide splash screen after App has mounted and DOM is fully laid out
+      // A small timeout of 250ms ensures that React rendering cycle is complete and paints the WebView!
+      setTimeout(async () => {
+        try {
+          await SplashScreen.hide({
+            fadeOutDuration: 400
+          });
+          console.log('[Capacitor SplashScreen] Native splash screen dismissed smoothly.');
+        } catch (err) {
+          console.warn('[SplashScreen] Failed to dismiss splash screen:', err);
+        }
+      }, 250);
 
       return () => observer.disconnect();
     }
