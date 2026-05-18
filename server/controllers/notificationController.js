@@ -137,7 +137,9 @@ const getNotificationSummary = async (req, res, next) => {
       pendingStudents: 0,
       pendingLeaves: 0,
       pendingComplaints: 0,
-      unreadNotifications: 0
+      unreadNotifications: 0,
+      leaveUpdates: 0,
+      complaintUpdates: 0
     };
 
     // 1. Fetch unread notification counts for all roles except SECURITY
@@ -169,17 +171,57 @@ const getNotificationSummary = async (req, res, next) => {
       summary.pendingComplaints = complaints;
       summary.pendingStudents = students;
     } else if (role === 'STUDENT') {
-      const [leaves, complaints] = await Promise.all([
+      const [leaves, complaints, unreadNotifs] = await Promise.all([
         Leave.countDocuments({ studentId: userId, status: 'PENDING' }),
-        Complaint.countDocuments({ studentId: userId, status: 'OPEN' })
+        Complaint.countDocuments({ studentId: userId, status: 'OPEN' }),
+        Notification.find({ recipientId: userId, isRead: false }).lean()
       ]);
+
+      // Calculate category-specific updates based on unread notifications
+      const leaveNotifications = unreadNotifs.filter(n => 
+        n.type && (n.type.startsWith('LEAVE_') || n.type === 'QR_EXIT_MARKED' || n.type === 'QR_RETURN_MARKED')
+      ).length;
+
+      const complaintNotifications = unreadNotifs.filter(n => 
+        n.type && (n.type.startsWith('COMPLAINT_') || n.type === 'NEW_COMPLAINT' || n.type === 'COMPLAINT_RESOLVED')
+      ).length;
+
       summary.pendingLeaves = leaves;
       summary.pendingComplaints = complaints;
+      summary.leaveUpdates = leaveNotifications || leaves; // Resilient fallback
+      summary.complaintUpdates = complaintNotifications || complaints; // Resilient fallback
     }
 
     res.status(200).json({
       success: true,
       summary
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const markCategoryAsRead = async (req, res, next) => {
+  try {
+    const { category } = req.body; // 'LEAVE' or 'COMPLAINT'
+    let types = [];
+    
+    if (category === 'LEAVE') {
+      types = ['LEAVE_APPROVED', 'LEAVE_REJECTED', 'LEAVE_REQUESTED', 'QR_EXIT_MARKED', 'QR_RETURN_MARKED'];
+    } else if (category === 'COMPLAINT') {
+      types = ['NEW_COMPLAINT', 'COMPLAINT_RESOLVED'];
+    }
+
+    if (types.length > 0) {
+      await Notification.updateMany(
+        { recipientId: req.user._id, type: { $in: types }, isRead: false },
+        { isRead: true }
+      );
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: `Notifications of category ${category} marked as read.`
     });
   } catch (error) {
     next(error);
@@ -192,5 +234,6 @@ module.exports = {
   markAllAsRead,
   registerDeviceToken,
   deregisterDeviceToken,
-  getNotificationSummary
+  getNotificationSummary,
+  markCategoryAsRead
 };

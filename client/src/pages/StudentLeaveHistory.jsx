@@ -5,8 +5,11 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { AuthContext } from '../context/AuthContext';
 import { Download, Maximize2, Sun, ShieldCheck, X, FileText, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
 
+import { useSocket } from '../context/SocketContext';
+
 export default function StudentLeaveHistory() {
   const { user } = useContext(AuthContext);
+  const { refreshBadgeSummary } = useSocket();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,6 +20,10 @@ export default function StudentLeaveHistory() {
 
   useEffect(() => {
     fetchHistory();
+    // Mark leave updates as read to clear sidebar badges
+    api.put('/notifications/read-category', { category: 'LEAVE' })
+      .then(() => refreshBadgeSummary())
+      .catch(err => console.warn('Failed to clear leave notifications', err));
   }, []);
 
   const fetchHistory = async () => {

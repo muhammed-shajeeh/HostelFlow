@@ -5,7 +5,8 @@ const {
   markAllAsRead,
   registerDeviceToken,
   deregisterDeviceToken,
-  getNotificationSummary
+  getNotificationSummary,
+  markCategoryAsRead
 } = require('../controllers/notificationController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -14,6 +15,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.get('/summary', getNotificationSummary);
+router.put('/read-category', markCategoryAsRead);
 router.get('/', getNotifications);
 router.put('/read-all', markAllAsRead);
 router.post('/register-device', registerDeviceToken);

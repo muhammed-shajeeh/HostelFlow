@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
+import { useSocket } from '../context/SocketContext';
 
 export default function StudentLeaveRequest() {
   const navigate = useNavigate();
+  const { refreshBadgeSummary } = useSocket();
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     leaveType: 'HOME',
@@ -15,6 +17,13 @@ export default function StudentLeaveRequest() {
     expectedReturnDate: '',
     isEmergency: false
   });
+
+  useEffect(() => {
+    // Mark leave updates as read to clear sidebar badges
+    api.put('/notifications/read-category', { category: 'LEAVE' })
+      .then(() => refreshBadgeSummary())
+      .catch(err => console.warn('Failed to clear leave notifications', err));
+  }, []);
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;

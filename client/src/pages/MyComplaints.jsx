@@ -33,9 +33,11 @@ const PriorityBadge = ({ priority }) => (
 );
 
 // ── Main Component ─────────────────────────────────────
+import { useSocket } from '../context/SocketContext';
 
 export default function MyComplaints() {
   const { user } = useContext(AuthContext);
+  const { refreshBadgeSummary } = useSocket();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
@@ -53,6 +55,11 @@ export default function MyComplaints() {
       }
     };
     fetchComplaints();
+
+    // Mark complaint updates as read to clear sidebar badges
+    api.put('/notifications/read-category', { category: 'COMPLAINT' })
+      .then(() => refreshBadgeSummary())
+      .catch(err => console.warn('Failed to clear complaint notifications', err));
   }, []);
 
   // Client-side filter — no extra API call needed
