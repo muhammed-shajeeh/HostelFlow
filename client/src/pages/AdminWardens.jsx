@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
-import { Edit2, Trash2, Key, Users, Home } from 'lucide-react';
+import { Edit2, Trash2, Key, Users, Home, ShieldCheck } from 'lucide-react';
 
 export default function AdminWardens() {
   const [wardens, setWardens] = useState([]);
@@ -114,16 +114,29 @@ export default function AdminWardens() {
     }
   };
 
-  const handleDeleteClick = async (warden) => {
-    const confirm = window.confirm(`Are you absolutely sure you want to permanently delete warden "${warden.fullName}"?\n\nAll student profiles, room layouts, billing invoices, and attendance logs under their assigned hostel will remain 100% intact.`);
+  const handleDeactivateClick = async (warden) => {
+    const confirm = window.confirm(`Are you absolutely sure you want to soft-deactivate warden "${warden.fullName}"?\n\nThey will no longer be able to log in, and their assigned hostel allocation will be safely unbound. All activity logs, historic notifications, and student profiles will remain 100% untouched.`);
     if (!confirm) return;
 
     try {
       await api.delete(`/admin/wardens/${warden._id}`);
-      toast.success('Warden account deleted. Hostel data preserved.');
+      toast.success('Warden account deactivated. Hostel data and logs preserved.');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Deletion failed');
+      toast.error(error.response?.data?.message || 'Deactivation failed');
+    }
+  };
+
+  const handleReactivateClick = async (warden) => {
+    const confirm = window.confirm(`Reactivate warden "${warden.fullName}"? They will immediately regain authorization to log into their Warden portal dashboard.`);
+    if (!confirm) return;
+
+    try {
+      await api.post(`/admin/wardens/${warden._id}/reactivate`);
+      toast.success('Warden account reactivated successfully!');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Reactivation failed');
     }
   };
 
@@ -136,7 +149,7 @@ export default function AdminWardens() {
             Warden Management
           </h2>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-            Safely assign, edit credentials, reassign, or delete warden roles with zero hostel data loss.
+            Safely assign, edit credentials, reassign, or deactivate warden roles with zero hostel data loss.
           </p>
         </div>
         <button 
@@ -166,6 +179,7 @@ export default function AdminWardens() {
                   <th className="px-6 py-4 text-left">Warden Name</th>
                   <th className="px-6 py-4 text-left">Email Address</th>
                   <th className="px-6 py-4 text-left">Assigned Hostel</th>
+                  <th className="px-6 py-4 text-center">Status</th>
                   <th className="px-6 py-4 text-center">Actions</th>
                 </tr>
               </thead>
@@ -187,28 +201,51 @@ export default function AdminWardens() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {warden.isActive !== false ? (
+                        <span className="inline-flex items-center gap-1 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full text-[10px] font-black border border-green-150 dark:border-green-500/20">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 bg-slate-50 dark:bg-zinc-800/40 text-slate-500 dark:text-zinc-450 px-2 py-0.5 rounded-full text-[10px] font-black border border-slate-200 dark:border-zinc-850">
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button 
-                          onClick={() => handleEditClick(warden)}
-                          className="p-1.5 text-blue-600 dark:text-blue-450 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-transparent hover:border-blue-100 dark:hover:border-blue-500/20 rounded-lg transition-all cursor-pointer flex items-center justify-center"
-                          title="Edit Account Details"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteClick(warden)}
-                          className="p-1.5 text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-500/10 border border-transparent hover:border-rose-100 dark:hover:border-rose-500/20 rounded-lg transition-all cursor-pointer flex items-center justify-center"
-                          title="Permanently Terminate Warden"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {warden.isActive !== false ? (
+                          <>
+                            <button 
+                              onClick={() => handleEditClick(warden)}
+                              className="p-1.5 text-blue-600 dark:text-blue-450 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-transparent hover:border-blue-100 dark:hover:border-blue-500/20 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                              title="Edit Account Details"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeactivateClick(warden)}
+                              className="p-1.5 text-amber-600 dark:text-amber-450 hover:bg-amber-50 dark:hover:bg-amber-500/10 border border-transparent hover:border-amber-100 dark:hover:border-amber-500/20 rounded-lg transition-all cursor-pointer flex items-center justify-center"
+                              title="Deactivate Warden"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={() => handleReactivateClick(warden)}
+                            className="inline-flex items-center gap-1 bg-green-600 hover:bg-green-700 active:scale-[0.98] transition-all text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-sm cursor-pointer"
+                            title="Reactivate Warden"
+                          >
+                            Reactivate
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
                 {wardens.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="px-6 py-12 text-center text-slate-450 dark:text-zinc-500 font-bold italic">
+                    <td colSpan="5" className="px-6 py-12 text-center text-slate-450 dark:text-zinc-500 font-bold italic">
                       No wardens mapped in the directory. Create and assign one to get started!
                     </td>
                   </tr>
@@ -227,7 +264,7 @@ export default function AdminWardens() {
               <Users className="text-blue-500" size={20} />
               Create & Assign Warden
             </h3>
-            <p className="text-[11px] text-slate-450 dark:text-zinc-400 mt-1 mb-5">
+            <p className="text-[11px] text-slate-455 dark:text-zinc-400 mt-1 mb-5">
               Creates a secure profile and dispatches an institutional welcome email with temporary credentials automatically.
             </p>
             <form onSubmit={handleSubmit} className="space-y-4 text-xs font-bold">

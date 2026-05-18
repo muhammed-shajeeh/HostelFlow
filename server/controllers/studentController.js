@@ -143,7 +143,9 @@ const emailHtml = `
     email: student.email,
     subject: 'Verify Email - Smart Hostel',
     html: emailHtml
-  }).catch(emailError => console.error(emailError));
+  }).catch(emailError => {
+    console.warn(`[MAILER] Student registration email failed for ${student.email} — database registration preserved.`);
+  });
 
 res.status(201).json({
   success: true,
@@ -415,7 +417,9 @@ const emailHtml = `
     email: student.email,
     subject: 'Hostel Approval',
     html: emailHtml
-  }).catch(emailError => console.error(emailError));
+  }).catch(emailError => {
+    console.warn(`[MAILER] Hostel approval email failed for ${student.email} — database approval preserved.`);
+  });
 
 // ======================================================
 // PARENT ACCOUNT WORKFLOW (PHASE 1, 3, 4, 5)
@@ -462,7 +466,9 @@ if (student.parentEmail) {
       email: parent.email,
       subject: 'Guardian Account Created - Smart Hostel',
       html: parentEmailHtml
-    }).catch(err => console.error('Parent onboarding email failed', err));
+    }).catch(err => {
+      console.warn(`[MAILER] Parent onboarding email failed for ${parent.email} — database update preserved.`);
+    });
 
   } else {
     // Phase 5: Existing Parent Detection & Sibling Linking
@@ -484,7 +490,9 @@ if (student.parentEmail) {
         email: parent.email,
         subject: 'New Student Linked - Smart Hostel',
         html: linkEmailHtml
-      }).catch(err => console.error('Parent link notification failed', err));
+      }).catch(err => {
+        console.warn(`[MAILER] Parent link notification email failed for ${parent.email} — database update preserved.`);
+      });
     }
   }
 }
@@ -562,7 +570,9 @@ await logAudit({
     email: student.email,
     subject: 'Hostel Application Update',
     html: '<p>Your hostel application was rejected.</p>'
-  }).catch(emailError => console.error(emailError));
+  }).catch(emailError => {
+    console.warn(`[MAILER] Student rejection email failed for ${student.email} — database rejection preserved.`);
+  });
 
 res.status(200).json({
   success: true,
@@ -677,7 +687,9 @@ await student.save();
         Room ${newRoom.roomNumber}
       </p>
     `
-  }).catch(emailError => console.error(emailError));
+  }).catch(emailError => {
+    console.warn(`[MAILER] Room change email failed for ${student.email} — database update preserved.`);
+  });
 
 res.status(200).json({
   success: true,

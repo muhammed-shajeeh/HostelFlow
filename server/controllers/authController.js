@@ -72,7 +72,9 @@ const register = async (req, res, next) => {
       email: user.email,
       subject: 'Verify your Email - Smart Hostel Management System',
       html: emailHtml
-    }).catch(emailError => console.error('Email could not be sent', emailError));
+    }).catch(emailError => {
+      console.warn(`[MAILER] Verification email failed for ${user.email} — database registration preserved.`);
+    });
 
   } catch (error) {
     next(error);
@@ -379,7 +381,9 @@ const requestPasswordReset = async (req, res, next) => {
       email: user.email,
       subject: 'Reset your password - HostelFlow',
       html: emailHtml
-    }).catch(emailErr => console.error('Password reset email failed to send', emailErr));
+    }).catch(emailErr => {
+      console.warn(`[MAILER] Password reset email failed for ${user.email} — database update preserved.`);
+    });
 
   } catch (error) {
     next(error);

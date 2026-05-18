@@ -93,7 +93,9 @@ const createWarden = async (req, res, next) => {
       email: warden.email,
       subject: 'Warden Account Created - Smart Hostel',
       html: emailHtml
-    }).catch(emailError => console.error('Credentials email could not be sent', emailError));
+    }).catch(emailError => {
+      console.warn(`[MAILER] Credentials email failed for ${warden.email} — database update preserved.`);
+    });
 
   } catch (error) { next(error); }
 };
@@ -234,10 +236,34 @@ const updateWarden = async (req, res, next) => {
       message: 'Warden updated successfully',
       warden: { _id: warden._id, fullName: warden.fullName, email: warden.email, hostelId: warden.hostelId }
     });
+
+    // Symmetrical, decoupled notification email sent asynchronously in background
+    if (password || email || hostelId !== undefined) {
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>HostelFlow Warden Account Update</h2>
+          <p>Hi ${warden.fullName},</p>
+          <p>Your institutional Warden profile details have been updated by the administrator:</p>
+          <ul>
+            <li><strong>Email:</strong> ${warden.email}</li>
+            ${password ? `<li><strong>Temporary Password:</strong> ${password}</li>` : ''}
+            ${warden.hostelId ? `<li><strong>Assigned Hostel:</strong> Mapped to hostel successfully</li>` : '<li><strong>Assigned Hostel:</strong> Unassigned</li>'}
+          </ul>
+          <p>If you did not expect these changes, please contact the campus network administrator immediately.</p>
+        </div>
+      `;
+      sendEmail({
+        email: warden.email,
+        subject: 'Warden Account Updated - HostelFlow',
+        html: emailHtml
+      }).catch(emailError => {
+        console.warn(`[MAILER] Credentials update email failed for ${warden.email} — database update preserved.`);
+      });
+    }
   } catch (error) { next(error); }
 };
 
-// @desc    Delete a Warden (safe unbinding)
+// @desc    Soft deactivate a Warden (safe unbinding)
 // @route   DELETE /api/admin/wardens/:id
 // @access  Private (Admin only)
 const deleteWarden = async (req, res, next) => {
@@ -247,28 +273,94 @@ const deleteWarden = async (req, res, next) => {
     const warden = await User.findOne({ _id: wardenId, role: 'WARDEN' });
     if (!warden) return res.status(404).json({ success: false, message: 'Warden not found' });
 
-    // Safely unbind from any assigned hostel before deleting the account
+    // Safely unbind from any assigned hostel before deactivating
     if (warden.hostelId) {
       await Hostel.findByIdAndUpdate(warden.hostelId, { $unset: { warden: 1 } });
+      warden.hostelId = undefined;
     }
 
-    await User.deleteOne({ _id: wardenId });
+    warden.isActive = false;
+    await warden.save();
 
-    // Centrally log the warden deletion event
+    // Centrally log the warden deactivation event
     const { logAudit } = require('../utils/auditLogger');
     await logAudit({
       req,
-      actionType: 'WARDEN_DELETED',
+      actionType: 'WARDEN_DEACTIVATED',
       entityType: 'USER',
       entityId: wardenId,
-      title: 'Warden Deleted',
-      description: `Warden account for ${warden.fullName} was permanently deleted. Hostel data was preserved.`,
+      title: 'Warden Deactivated',
+      description: `Warden account for ${warden.fullName} was deactivated. Hostel data and history were preserved.`,
       severity: 'WARNING'
     });
 
     res.status(200).json({ 
       success: true, 
-      message: 'Warden account deleted successfully. Hostel data preserved.' 
+      message: 'Warden account deactivated successfully. Hostel data preserved.' 
+    });
+
+    // Async alert
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h3>HostelFlow Warden Account Deactivated</h3>
+        <p>Hello ${warden.fullName},</p>
+        <p>Your warden account has been deactivated by the system administrator. You will no longer be able to log in to the Warden portal.</p>
+      </div>
+    `;
+    sendEmail({
+      email: warden.email,
+      subject: 'Account Deactivated - HostelFlow',
+      html: emailHtml
+    }).catch(emailError => {
+      console.warn(`[MAILER] Deactivation email failed for ${warden.email} — database update preserved.`);
+    });
+  } catch (error) { next(error); }
+};
+
+// @desc    Reactivate a soft-deactivated Warden
+// @route   POST /api/admin/wardens/:id/reactivate
+// @access  Private (Admin only)
+const reactivateWarden = async (req, res, next) => {
+  try {
+    const wardenId = req.params.id;
+
+    const warden = await User.findOne({ _id: wardenId, role: 'WARDEN' });
+    if (!warden) return res.status(404).json({ success: false, message: 'Warden not found' });
+
+    warden.isActive = true;
+    await warden.save();
+
+    // Centrally log the warden reactivation event
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'WARDEN_REACTIVATED',
+      entityType: 'USER',
+      entityId: wardenId,
+      title: 'Warden Account Reactivated',
+      description: `Warden account for ${warden.fullName} was reactivated.`,
+      severity: 'IMPORTANT'
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Warden account reactivated successfully.' 
+    });
+
+    // Async alert
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h3>HostelFlow Warden Account Reactivated</h3>
+        <p>Hello ${warden.fullName},</p>
+        <p>Your warden account has been reactivated. You can now log in using your registered credentials.</p>
+      </div>
+    `;
+    sendEmail({
+      email: warden.email,
+      subject: 'Account Reactivated - HostelFlow',
+      html: emailHtml
+    }).catch(emailError => {
+      console.warn(`[MAILER] Reactivation email failed for ${warden.email} — database update preserved.`);
     });
   } catch (error) { next(error); }
 };
@@ -278,5 +370,6 @@ module.exports = {
   getAdminDashboard,
   getWardensList,
   updateWarden,
-  deleteWarden
+  deleteWarden,
+  reactivateWarden
 };

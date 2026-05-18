@@ -197,7 +197,9 @@ const approveLeave = async (req, res, next) => {
 
     // Optimization: Non-blocking asynchronous email
     sendEmail({ email: leave.studentId.email, subject: 'Leave Request Approved - QR Pass Inside', html: emailHtml })
-      .catch(e => console.error('Failed to send QR email', e));
+      .catch(e => {
+        console.warn(`[MAILER] QR pass email failed for ${leave.studentId.email} — database approval preserved.`);
+      });
       
     console.timeEnd('approveLeaveAPI');
   } catch (error) { next(error); }
@@ -266,7 +268,9 @@ const rejectLeave = async (req, res, next) => {
 
     // Optimization: Non-blocking email
     sendEmail({ email: leave.studentId.email, subject: 'Leave Request Rejected', html: emailHtml })
-      .catch(e => console.error('Failed to send rejection email', e));
+      .catch(e => {
+        console.warn(`[MAILER] Rejection email failed for ${leave.studentId.email} — database rejection preserved.`);
+      });
   } catch (error) { next(error); }
 };
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const { check } = require('express-validator');
-const { createWarden, getAdminDashboard, getWardensList, updateWarden, deleteWarden } = require('../controllers/adminController');
+const { createWarden, getAdminDashboard, getWardensList, updateWarden, deleteWarden, reactivateWarden } = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 
@@ -14,6 +14,7 @@ router.get('/dashboard', getAdminDashboard);
 router.get('/wardens', getWardensList);
 router.put('/wardens/:id', updateWarden);
 router.delete('/wardens/:id', deleteWarden);
+router.post('/wardens/:id/reactivate', reactivateWarden);
 
 router.post('/create-warden',
   [
