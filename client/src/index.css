@@ -225,3 +225,32 @@
     padding-top: calc(env(safe-area-inset-top) + 0.5rem) !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ANDROID WEBVIEW COMPATIBILITY FIXES FOR SELECTS & DATE PICKERS
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* 1. Force light/dark color scheme hints so Chromium requests matching native dialogs */
+select,
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: light !important;
+}
+
+.dark select,
+.dark input[type="date"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark !important;
+}
+
+/* 2. Standardize native option dropdown items to prevent white-on-white text */
+select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark select option {
+  background-color: #161b22 !important;
+  color: #c9d1d9 !important;
+}
+
