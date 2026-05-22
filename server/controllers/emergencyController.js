@@ -53,22 +53,57 @@ const createAlert = async (req, res, next) => {
     emitToRoom(`HOSTEL_${hostelId}`, 'EMERGENCY_ALERT', populatedAlert);
     emitToRoom('ADMIN_GLOBAL', 'EMERGENCY_ALERT', populatedAlert);
 
-    // 5. Asynchronous background transactional email dispatch (does not block controller response)
+    // 5. Asynchronous background transactional email and FCM push notification dispatch (does not block controller response)
     (async () => {
       try {
         const student = populatedAlert.studentId;
         const room = populatedAlert.roomId;
         const hostelName = populatedAlert.hostelId ? populatedAlert.hostelId.name : 'Hostel';
 
-        // Retrieve active wardens of the student's hostel and all active system admins
+        // Retrieve active wardens and security of the student's hostel, and all active system admins
         const recipients = await User.find({
           $or: [
             { role: 'WARDEN', hostelId: hostelId, isActive: true },
+            { role: 'SECURITY', hostelId: hostelId, isActive: true },
             { role: 'ADMIN', isActive: true }
           ]
-        }).select('email fullName');
+        }).select('email fullName role');
 
         if (recipients.length > 0) {
+          // A. Send FCM Push Notifications asynchronously
+          (async () => {
+            try {
+              const recipientIds = recipients.map(r => r._id);
+              const DeviceToken = require('../models/DeviceToken');
+              const { sendPushNotification } = require('../utils/fcmHelper');
+
+              const deviceTokens = await DeviceToken.find({
+                userId: { $in: recipientIds }
+              }).select('fcmToken');
+
+              const fcmTokens = deviceTokens.map(dt => dt.fcmToken);
+
+              if (fcmTokens.length > 0) {
+                const roomNum = room ? room.roomNumber : 'Unassigned';
+                const bodyText = `Student from Room ${roomNum} triggered an emergency alert.`;
+
+                console.log(`[Emergency Push System] Dispatched push request to ${fcmTokens.length} active device tokens.`);
+                
+                await sendPushNotification(fcmTokens, {
+                  title: '🚨 Emergency Alert',
+                  body: bodyText,
+                  route: '/dashboard',
+                  sound: 'emergency_siren',
+                  channelId: 'emergency_channel',
+                  entityId: populatedAlert._id.toString()
+                });
+              }
+            } catch (fcmErr) {
+              console.error('[Emergency Push System Error] FCM dispatch thread failed:', fcmErr.message);
+            }
+          })();
+
+          // B. Send transactional emails
           const subject = `🚨 EMERGENCY SOS ALERT - Room ${room ? room.roomNumber : 'N/A'} - ${student.fullName}`;
           const htmlContent = `
             <div style="font-family: Arial, sans-serif; border: 2px solid #ef4444; border-radius: 16px; padding: 24px; max-width: 600px; margin: 0 auto; background-color: #fef2f2; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
@@ -92,11 +127,14 @@ const createAlert = async (req, res, next) => {
           `;
 
           for (const recipient of recipients) {
-            sendEmail({
-              email: recipient.email,
-              subject,
-              html: htmlContent
-            }).catch(err => console.error(`[Emergency Email System Error] Failed to send to ${recipient.email}:`, err.message));
+            // Send emails only if they have a valid email format configured
+            if (recipient.email) {
+              sendEmail({
+                email: recipient.email,
+                subject,
+                html: htmlContent
+              }).catch(err => console.error(`[Emergency Email System Error] Failed to send to ${recipient.email}:`, err.message));
+            }
           }
         }
       } catch (emailErr) {

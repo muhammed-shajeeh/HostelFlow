@@ -44,7 +44,8 @@ const sendPushNotification = async (tokens, payload) => {
     android: {
       priority: 'high',
       notification: {
-        sound: 'default',
+        sound: payload.sound || 'default',
+        channelId: payload.channelId || 'default',
         clickAction: 'FCM_PLUGIN_ACTIVITY',
         icon: 'stock_ticker_update'
       }
@@ -52,7 +53,7 @@ const sendPushNotification = async (tokens, payload) => {
     apns: {
       payload: {
         aps: {
-          sound: 'default',
+          sound: payload.sound || 'default',
           badge: 1
         }
       }

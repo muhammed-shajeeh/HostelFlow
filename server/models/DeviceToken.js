@@ -8,7 +8,7 @@ const deviceTokenSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['STUDENT', 'PARENT', 'WARDEN', 'ADMIN'],
+    enum: ['STUDENT', 'PARENT', 'WARDEN', 'ADMIN', 'SECURITY'],
     required: true
   },
   hostelId: {
