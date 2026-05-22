@@ -5,7 +5,6 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import NativeSelect from '../components/NativeSelect';
-import DateTimePicker from '../components/DateTimePicker';
 import {
   Download,
   Maximize2,
@@ -370,26 +369,26 @@ export default function StudentLeaveRequest() {
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Departure Date & Time</label>
                 <div className="relative">
-                  <DateTimePicker
+                  <input
                     required
                     type="datetime-local"
                     name="departureDate"
                     value={formData.departureDate}
                     onChange={handleChange}
-                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs font-bold flex items-center justify-between"
+                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs font-bold"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Expected Return Date & Time</label>
                 <div className="relative">
-                  <DateTimePicker
+                  <input
                     required
                     type="datetime-local"
                     name="expectedReturnDate"
                     value={formData.expectedReturnDate}
                     onChange={handleChange}
-                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs font-bold flex items-center justify-between"
+                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs font-bold"
                   />
                 </div>
               </div>
