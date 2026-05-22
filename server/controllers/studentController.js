@@ -921,13 +921,263 @@ next(error);
 
 };
 
+const vacateStudent = async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+    const student = await User.findById(req.params.id);
+
+    if (!student || student.role !== 'STUDENT') {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    if (
+      req.user.role === 'WARDEN' &&
+      req.user.hostelId.toString() !== student.hostelId.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden'
+      });
+    }
+
+    if (!student.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student is already vacated/archived'
+      });
+    }
+
+    const oldRoomId = student.roomId;
+    let oldRoomNumber = 'Unassigned';
+
+    // 1. Release room occupancy
+    if (oldRoomId) {
+      const oldRoom = await Room.findById(oldRoomId);
+      if (oldRoom) {
+        oldRoomNumber = oldRoom.roomNumber;
+        oldRoom.students.pull(student._id);
+        oldRoom.occupiedBeds = Math.max(0, oldRoom.occupiedBeds - 1);
+        oldRoom.availableBeds = oldRoom.capacity - oldRoom.occupiedBeds;
+        await oldRoom.save();
+
+        const { emitToRoom } = require('../utils/socket');
+        emitToRoom(`HOSTEL_${student.hostelId}`, 'ROOM_UPDATED', {
+          roomId: oldRoom._id,
+          roomNumber: oldRoom.roomNumber,
+          occupiedBeds: oldRoom.occupiedBeds,
+          availableBeds: oldRoom.availableBeds
+        });
+      }
+    }
+
+    // 2. Perform parent account deactivation/unlinking
+    let parentCleanedUpInfo = 'No parent account linked';
+    if (student.parentEmail) {
+      const parents = await User.find({ role: 'PARENT', linkedStudents: student._id });
+      for (const parent of parents) {
+        if (parent.linkedStudents.length === 1) {
+          // Linked ONLY to this student -> deactivate parent
+          parent.isActive = false;
+          parentCleanedUpInfo = `Deactivated parent account: ${parent.email}`;
+        } else {
+          // monitors multiple students -> unlink this student only
+          parent.linkedStudents.pull(student._id);
+          parentCleanedUpInfo = `Unlinked from multi-student parent account: ${parent.email}`;
+        }
+        await parent.save();
+      }
+    }
+
+    // 3. Mark student as inactive, vacated, and archived
+    student.isActive = false;
+    student.status = 'VACATED';
+    student.vacatedAt = new Date();
+    student.vacatedBy = req.user._id;
+    student.vacateReason = reason || 'Vacated by Warden/Admin';
+    
+    // Clear room assignment pointers to avoid orphans
+    student.roomId = null;
+    student.bedNumber = null;
+
+    await student.save();
+
+    // 4. Trigger Socket Realtime Updates
+    const { emitToRoom } = require('../utils/socket');
+    emitToRoom(`HOSTEL_${student.hostelId}`, 'STUDENT_VACATED', {
+      studentId: student._id,
+      fullName: student.fullName,
+      hostelId: student.hostelId,
+      oldRoomId,
+      oldRoomNumber
+    });
+    emitToRoom(`HOSTEL_${student.hostelId}`, 'REFRESH_DASHBOARD', { type: 'STUDENT_VACATED' });
+    emitToRoom('ADMIN_GLOBAL', 'REFRESH_DASHBOARD', { type: 'STUDENT_VACATED' });
+
+    // 5. Create proper Audit Logging
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'STUDENT_VACATED',
+      entityType: 'USER',
+      entityId: student._id,
+      title: 'Student Vacated & Archived',
+      description: `Student ${student.fullName} has vacated the hostel and account was archived. Room ${oldRoomNumber} occupancy released. ${parentCleanedUpInfo}`,
+      severity: 'IMPORTANT',
+      hostelId: student.hostelId,
+      metadata: {
+        vacatedBy: req.user._id,
+        reason: student.vacateReason,
+        previousRoom: oldRoomNumber,
+        parentCleanedUp: parentCleanedUpInfo
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Student ${student.fullName} has been successfully vacated and account archived.`,
+      parentCleanedUpInfo
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getArchivedStudents = async (req, res, next) => {
+  try {
+    let query = {
+      role: 'STUDENT',
+      isActive: false,
+      status: 'VACATED'
+    };
+
+    if (req.user.role === 'WARDEN') {
+      query.hostelId = req.user.hostelId;
+    }
+
+    const students = await User.find(query)
+      .populate('vacatedBy', 'fullName email')
+      .sort({ vacatedAt: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      count: students.length,
+      students
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const restoreStudent = async (req, res, next) => {
+  try {
+    const student = await User.findById(req.params.id);
+
+    if (!student || student.role !== 'STUDENT') {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    if (
+      req.user.role === 'WARDEN' &&
+      req.user.hostelId.toString() !== student.hostelId.toString()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden'
+      });
+    }
+
+    if (student.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student is already active'
+      });
+    }
+
+    // 1. Restore Student status flags
+    student.isActive = true;
+    student.status = 'ACTIVE';
+    student.approvalStatus = 'PENDING'; // Return to pending so Warden can approve and run smart allocation!
+    student.isApproved = false;
+
+    // Clear vacated indicators
+    student.vacatedAt = undefined;
+    student.vacatedBy = undefined;
+    student.vacateReason = undefined;
+
+    await student.save();
+
+    // 2. Reactivate and link Parent Account if necessary
+    let parentRestoredInfo = 'No parent reactivated';
+    if (student.parentEmail) {
+      let parent = await User.findOne({ email: student.parentEmail, role: 'PARENT' });
+      if (parent) {
+        let changed = false;
+        if (!parent.isActive) {
+          parent.isActive = true;
+          changed = true;
+        }
+        if (!parent.linkedStudents.includes(student._id)) {
+          parent.linkedStudents.push(student._id);
+          changed = true;
+        }
+        if (changed) {
+          await parent.save();
+          parentRestoredInfo = `Reactivated and re-linked parent account: ${parent.email}`;
+        }
+      }
+    }
+
+    // 3. Emit real-time broadcasts
+    const { emitToRoom } = require('../utils/socket');
+    emitToRoom(`HOSTEL_${student.hostelId}`, 'REFRESH_DASHBOARD', { type: 'STUDENT_RESTORED' });
+    emitToRoom('ADMIN_GLOBAL', 'REFRESH_DASHBOARD', { type: 'STUDENT_RESTORED' });
+
+    // 4. Log audit log
+    const { logAudit } = require('../utils/auditLogger');
+    await logAudit({
+      req,
+      actionType: 'STUDENT_RESTORED',
+      entityType: 'USER',
+      entityId: student._id,
+      title: 'Student Account Restored',
+      description: `Student account for ${student.fullName} has been restored back to the active list and routed to Pending approvals for smart allocation.`,
+      severity: 'IMPORTANT',
+      hostelId: student.hostelId,
+      metadata: {
+        restoredBy: req.user._id,
+        parentRestored: parentRestoredInfo
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Resident ${student.fullName} successfully restored and queued back to Pending approvals.`,
+      parentRestoredInfo
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
-registerStudent,
-approveStudent,
-rejectStudent,
-changeRoom,
-getStudents,
-getPendingStudents,
-getSingleStudent,
-getRoomTransferHistory
+  registerStudent,
+  approveStudent,
+  rejectStudent,
+  changeRoom,
+  getStudents,
+  getPendingStudents,
+  getSingleStudent,
+  getRoomTransferHistory,
+  vacateStudent,
+  getArchivedStudents,
+  restoreStudent
 };

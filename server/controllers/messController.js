@@ -173,7 +173,7 @@ const freezeDailyMealsForDate = async (dateStr, hostelId = null) => {
   const targetDate = dateStr ? new Date(dateStr) : getNormalizedDate(1); // Defaults to Tomorrow!
   targetDate.setHours(0, 0, 0, 0);
 
-  let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED' };
+  let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED', isActive: true };
   if (hostelId) {
     studentQuery.hostelId = hostelId;
   }
@@ -578,7 +578,7 @@ const createBillingCycleDraft = async (req, res, next) => {
       return res.status(400).json({ success: false, message: `Billing cycle for ${month} already exists.` });
     }
 
-    let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED' };
+    let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED', isActive: true };
     if (req.user.role === 'WARDEN') {
       studentQuery.hostelId = req.user.hostelId;
     }
@@ -735,7 +735,7 @@ const regenerateBillingCycleDraft = async (req, res, next) => {
     }
 
     let deleteQuery = { billingCycleId: cycle._id };
-    let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED' };
+    let studentQuery = { role: 'STUDENT', approvalStatus: 'APPROVED', isActive: true };
     if (req.user.role === 'WARDEN') {
       deleteQuery.hostelId = req.user.hostelId;
       studentQuery.hostelId = req.user.hostelId;

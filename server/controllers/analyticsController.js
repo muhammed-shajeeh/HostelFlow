@@ -169,7 +169,7 @@ const getAdminAnalytics = async (req, res, next) => {
       Attendance.countDocuments({ status: 'LATE_RETURN' }),
 
       // ── Summary counts (run in parallel) ─────────
-      User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED' }),
+      User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED', isActive: true }),
       Room.countDocuments(),
       Notice.countDocuments({ isActive: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }),
       Notice.countDocuments({ priority: 'EMERGENCY', isActive: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }),
@@ -299,7 +299,7 @@ const getWardenAnalytics = async (req, res, next) => {
       Attendance.countDocuments({ hostelId, status: 'LATE_RETURN' }),
 
       // ── 8. Total approved students ────────────────
-      User.countDocuments({ hostelId, role: 'STUDENT', approvalStatus: 'APPROVED' }),
+      User.countDocuments({ hostelId, role: 'STUDENT', approvalStatus: 'APPROVED', isActive: true }),
 
       // ── Mess & Finance Analytics (Phase 11) ──────
       Invoice.aggregate([

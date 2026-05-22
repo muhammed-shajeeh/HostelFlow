@@ -2,7 +2,8 @@ const express = require('express');
 const { check } = require('express-validator');
 const { 
   registerStudent, approveStudent, rejectStudent, changeRoom, 
-  getStudents, getPendingStudents, getSingleStudent, getRoomTransferHistory
+  getStudents, getPendingStudents, getSingleStudent, getRoomTransferHistory,
+  vacateStudent, getArchivedStudents, restoreStudent
 } = require('../controllers/studentController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
@@ -30,10 +31,13 @@ router.use(roleMiddleware('ADMIN', 'WARDEN'));
 router.get('/', getStudents);
 router.get('/pending', getPendingStudents);
 router.get('/room-transfers/history', getRoomTransferHistory);
+router.get('/archived/list', getArchivedStudents);
 router.get('/:id', getSingleStudent);
 
 router.post('/:id/approve', approveStudent);
 router.post('/:id/reject', rejectStudent);
+router.post('/:id/vacate', vacateStudent);
+router.post('/:id/restore', restoreStudent);
 router.post('/:id/change-room', 
   [
     check('newRoomId', 'New Room ID is required').isMongoId()

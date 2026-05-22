@@ -130,6 +130,21 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  vacatedAt: {
+    type: Date
+  },
+  vacatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  vacateReason: {
+    type: String
+  },
+  status: {
+    type: String,
+    enum: ['ACTIVE', 'VACATED'],
+    default: 'ACTIVE'
+  },
   securityPinHash: {
     type: String
   },

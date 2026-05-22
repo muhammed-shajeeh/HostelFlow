@@ -421,7 +421,8 @@ const getAdminPaymentAnalytics = async (req, res, next) => {
         // Count active residents in this hostel
         const activeResidents = await mongoose.model('User').countDocuments({
           role: 'STUDENT',
-          hostelId: hostelId
+          hostelId: hostelId,
+          isActive: true
         });
 
         // Sum outstanding invoices balance in this hostel
@@ -444,7 +445,8 @@ const getAdminPaymentAnalytics = async (req, res, next) => {
       
       const activeResidents = await mongoose.model('User').countDocuments({
         role: 'STUDENT',
-        hostelId: hostelId
+        hostelId: hostelId,
+        isActive: true
       });
 
       const invoices = await Invoice.find({ hostelId: hostelId }).select('totalAmount amountPaid').lean();

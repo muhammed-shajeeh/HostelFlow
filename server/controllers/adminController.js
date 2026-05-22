@@ -120,7 +120,7 @@ const getAdminDashboard = async (req, res, next) => {
       Hostel.countDocuments(),
       Hostel.countDocuments({ isActive: true }),
       User.countDocuments({ role: 'WARDEN' }),
-      User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED' }),
+      User.countDocuments({ role: 'STUDENT', approvalStatus: 'APPROVED', isActive: true }),
       User.countDocuments({ role: 'STUDENT', approvalStatus: 'PENDING', emailVerified: true }),
       Room.find().lean() // Optimization: lean() for fast read
     ]);
