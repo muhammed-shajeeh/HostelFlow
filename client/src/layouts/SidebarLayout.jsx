@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useRef } from 'react';
-import { Outlet, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { 
   LogOut, 
@@ -31,6 +31,7 @@ export default function SidebarLayout() {
   const { theme, toggleTheme } = useTheme();
   const { badgeSummary } = useSocket();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [parentStudents, setParentStudents] = useState([]);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -110,8 +111,10 @@ export default function SidebarLayout() {
   const initials = getInitials(user?.fullName);
 
   // Reusable notion/linear navigation item link component with modern rounded notification bubbles
-  const NavLink = ({ to, icon: Icon, badge, badgeColor = 'red', children }) => {
-    const active = window.location.pathname === to || window.location.pathname.startsWith(to + '/');
+  const NavLink = ({ to, icon: Icon, badge, badgeColor = 'red', children, exact = false }) => {
+    const active = exact 
+      ? location.pathname === to 
+      : location.pathname === to || location.pathname.startsWith(to + '/');
     
     // Choose beautiful high-fidelity ERP-style badge colors with proper dark mode compliance
     const getBadgeColors = () => {
@@ -182,7 +185,7 @@ export default function SidebarLayout() {
             {user?.role === 'WARDEN' && (
               <>
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
-                <NavLink to="/warden" icon={LayoutDashboard}>Dashboard</NavLink>
+                <NavLink to="/warden" icon={LayoutDashboard} exact>Dashboard</NavLink>
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Operations</div>
                 <NavLink to="/attendance/mark" icon={CheckSquare}>Attendance</NavLink>
@@ -203,7 +206,7 @@ export default function SidebarLayout() {
             {user?.role === 'ADMIN' && (
               <>
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
-                <NavLink to="/admin" icon={LayoutDashboard}>Dashboard</NavLink>
+                <NavLink to="/admin" icon={LayoutDashboard} exact>Dashboard</NavLink>
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Management</div>
                 <NavLink to="/admin/hostels" icon={Home}>Hostels</NavLink>
@@ -226,7 +229,7 @@ export default function SidebarLayout() {
             {user?.role === 'STUDENT' && (
               <>
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
-                <NavLink to="/student" icon={LayoutDashboard}>Dashboard</NavLink>
+                <NavLink to="/student" icon={LayoutDashboard} exact>Dashboard</NavLink>
                 
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mt-4 mb-2 pl-2">Requests & Logs</div>
                 <NavLink to="/student/leaves/request" icon={FileText} badge={badgeSummary?.pendingLeaves} badgeColor="orange">Leave Requests</NavLink>
@@ -244,7 +247,7 @@ export default function SidebarLayout() {
             {user?.role === 'PARENT' && (
               <>
                 <div className="text-[10px] text-slate-500 dark:text-zinc-500 uppercase font-black tracking-widest mb-2 pl-2">Main Menu</div>
-                <NavLink to="/parent" icon={LayoutDashboard}>Dashboard</NavLink>
+                <NavLink to="/parent" icon={LayoutDashboard} exact>Dashboard</NavLink>
                 
                 {parentStudents.length > 0 ? (
                   <>
