@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
 
 export default function Register() {
   const [formData, setFormData] = useState({ 
@@ -85,7 +86,7 @@ export default function Register() {
           </div>
           <div>
             <label className="block mb-1 text-sm font-medium">Role</label>
-            <select 
+            <NativeSelect 
               name="role"
               value={formData.role}
               onChange={handleChange}
@@ -94,7 +95,7 @@ export default function Register() {
               <option value="STUDENT">Student</option>
               <option value="WARDEN">Warden</option>
               <option value="PARENT">Parent</option>
-            </select>
+            </NativeSelect>
           </div>
           {formData.role === 'STUDENT' && (
             <div>

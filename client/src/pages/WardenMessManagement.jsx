@@ -28,6 +28,7 @@ import {
   Calendar,
   LockKeyhole
 } from 'lucide-react';
+import NativeSelect from '../components/NativeSelect';
 
 export default function WardenMessManagement() {
   const { user } = useContext(AuthContext);
@@ -685,7 +686,7 @@ export default function WardenMessManagement() {
             <div className="space-y-4">
               <div>
                 <label className="block text-[9px] uppercase text-gray-400 mb-1">Select Resident Student</label>
-                <select
+                <NativeSelect
                   value={overrideForm.studentId}
                   onChange={(e) => setOverrideForm({ ...overrideForm, studentId: e.target.value })}
                   className="w-full border rounded-xl px-3 py-2 font-bold focus:outline-indigo-500 bg-white"
@@ -697,7 +698,7 @@ export default function WardenMessManagement() {
                       {st.fullName} ({st.admissionNumber}) - Room {st.roomId?.roomNumber || 'TBA'}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
 
 export default function AdminStudentTransfer() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -325,7 +326,7 @@ export default function AdminStudentTransfer() {
                     <label className="block text-xs font-bold uppercase text-slate-500 dark:text-zinc-400 mb-2">
                       Destination Hostel
                     </label>
-                    <select
+                    <NativeSelect
                       value={destHostelId}
                       onChange={(e) => {
                         setDestHostelId(e.target.value);
@@ -341,7 +342,7 @@ export default function AdminStudentTransfer() {
                           {hostel.name} ({hostel.gender} block)
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                     {/* Gender mismatch notice */}
                     {selectedHostelData && selectedStudent.hostelId?.gender && selectedHostelData.gender !== selectedStudent.hostelId.gender && selectedHostelData.gender !== 'MIXED' && (
                       <div className="mt-2 flex items-start gap-1.5 p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-lg text-xs">
@@ -356,7 +357,7 @@ export default function AdminStudentTransfer() {
                     <label className="block text-xs font-bold uppercase text-slate-500 dark:text-zinc-400 mb-2">
                       Available Rooms
                     </label>
-                    <select
+                    <NativeSelect
                       value={destRoomId}
                       onChange={(e) => {
                         setDestRoomId(e.target.value);
@@ -372,7 +373,7 @@ export default function AdminStudentTransfer() {
                           Room {room.roomNumber} (Floor {room.floor} - {room.roomType}) [{room.availableBeds} beds left]
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                     {loadingRooms && (
                       <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
                         <RefreshCw size={10} className="animate-spin" /> Loading rooms...

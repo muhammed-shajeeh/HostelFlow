@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { ArrowLeftRight, History, X, RefreshCw, AlertCircle, CheckSquare, ShieldCheck, HelpCircle, Users, Archive, UserX, RotateCcw, Download } from 'lucide-react';
+import NativeSelect from '../components/NativeSelect';
 
 export default function StudentList() {
   const [students, setStudents] = useState([]);
@@ -400,7 +401,7 @@ export default function StudentList() {
 
             {/* Department Filter dropdown */}
             <div className="w-full sm:w-56">
-              <select
+              <NativeSelect
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-205 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none transition-all duration-150 cursor-pointer"
@@ -409,7 +410,7 @@ export default function StudentList() {
                 {uniqueDepartments.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
 
@@ -709,7 +710,7 @@ export default function StudentList() {
                 {loadingRooms ? (
                   <div className="text-xs text-slate-400 py-2.5">Querying available hostel rooms...</div>
                 ) : (
-                  <select
+                  <NativeSelect
                     required
                     value={targetRoomId}
                     onChange={(e) => setTargetRoomId(e.target.value)}
@@ -721,7 +722,7 @@ export default function StudentList() {
                         Room {room.roomNumber} — Floor {room.floor} ({room.availableBeds} beds remaining)
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 )}
                 {rooms.length === 0 && !loadingRooms && (
                   <p className="text-[10px] text-rose-500 dark:text-rose-400 mt-2 font-bold flex items-center gap-1">

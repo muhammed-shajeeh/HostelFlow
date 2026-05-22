@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
 
 // ── Badge helpers ──────────────────────────────────────
 
@@ -197,32 +198,32 @@ export default function ComplaintManagement() {
       <div className="bg-white border rounded-lg p-4 mb-6 flex flex-wrap gap-4 items-end shadow-sm">
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+          <NativeSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-36">
             <option value="ALL">All Statuses</option>
             <option value="OPEN">Open</option>
             <option value="IN_PROGRESS">In Progress</option>
             <option value="RESOLVED">Resolved</option>
             <option value="REJECTED">Rejected</option>
-          </select>
+          </NativeSelect>
         </div>
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Priority</label>
-          <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+          <NativeSelect value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-36">
             <option value="ALL">All Priorities</option>
             <option value="URGENT">🚨 Urgent</option>
             <option value="HIGH">High</option>
             <option value="MEDIUM">Medium</option>
             <option value="LOW">Low</option>
-          </select>
+          </NativeSelect>
         </div>
         <div>
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
-          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+          <NativeSelect value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-36">
             <option value="ALL">All Categories</option>
             {['ELECTRICAL','PLUMBING','FURNITURE','WIFI','CLEANING','SECURITY','HARASSMENT','MESS','ROOM_CHANGE','OTHER'].map(cat => (
               <option key={cat} value={cat}>{cat.replace('_', ' ')}</option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <button
           onClick={() => { setStatusFilter('ALL'); setPriorityFilter('ALL'); setCategoryFilter('ALL'); }}

@@ -7,6 +7,7 @@ import {
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useSocket } from '../context/SocketContext';
+import NativeSelect from '../components/NativeSelect';
 
 // Helper to format date cleanly for human timelines
 const formatTimelineDate = (dateString) => {
@@ -204,7 +205,7 @@ export default function AdminAuditLogs() {
             {/* Severity filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Severity Level</label>
-              <select
+              <NativeSelect
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none bg-slate-50 cursor-pointer"
@@ -214,13 +215,13 @@ export default function AdminAuditLogs() {
                 <option value="IMPORTANT">IMPORTANT</option>
                 <option value="WARNING">WARNING</option>
                 <option value="CRITICAL">CRITICAL</option>
-              </select>
+              </NativeSelect>
             </div>
 
             {/* Entity Type filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Event Module</label>
-              <select
+              <NativeSelect
                 value={entityType}
                 onChange={(e) => setEntityType(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none bg-slate-50 cursor-pointer"
@@ -235,13 +236,13 @@ export default function AdminAuditLogs() {
                 <option value="COMPLAINT">COMPLAINT</option>
                 <option value="NOTICE">NOTICE</option>
                 <option value="SYSTEM">SYSTEM</option>
-              </select>
+              </NativeSelect>
             </div>
 
             {/* Hostel Scope filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Hostel isolation</label>
-              <select
+              <NativeSelect
                 value={hostelId}
                 onChange={(e) => setHostelId(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none bg-slate-50 cursor-pointer"
@@ -250,7 +251,7 @@ export default function AdminAuditLogs() {
                 {hostels.map((h) => (
                   <option key={h._id} value={h._id}>{h.name}</option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
 
             {/* Date Filters */}

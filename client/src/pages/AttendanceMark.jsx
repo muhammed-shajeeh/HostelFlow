@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
+import NativeSelect from '../components/NativeSelect';
 
 export default function AttendanceMark() {
   const { user } = useContext(AuthContext);
@@ -149,7 +150,7 @@ export default function AttendanceMark() {
             </div>
             <div className="flex-1 min-w-[150px]">
               <label className="block text-sm font-bold text-gray-700 mb-1">Select Floor</label>
-              <select 
+              <NativeSelect 
                 value={selectedFloor} 
                 onChange={(e) => {
                   setSelectedFloor(e.target.value);
@@ -162,12 +163,12 @@ export default function AttendanceMark() {
                 {[...new Set(rooms.map(r => r.floor))].sort((a, b) => a - b).map(floor => (
                   <option key={floor} value={floor}>Floor {floor}</option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
 
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-bold text-gray-700 mb-1">Select Room</label>
-              <select 
+              <NativeSelect 
                 value={selectedRoomId} 
                 onChange={(e) => setSelectedRoomId(e.target.value)}
                 disabled={!selectedFloor}
@@ -177,7 +178,7 @@ export default function AttendanceMark() {
                 {rooms.filter(r => r.floor.toString() === selectedFloor.toString()).map(r => (
                   <option key={r._id} value={r._id}>Room {r.roomNumber}</option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </div>
 

@@ -4,6 +4,9 @@ import toast from 'react-hot-toast';
 import { QRCodeCanvas } from 'qrcode.react';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { Link } from 'react-router-dom';
+import NativeSelect from '../components/NativeSelect';
+import DateTimePicker from '../components/DateTimePicker';
 import { 
   Download, 
   Maximize2, 
@@ -289,7 +292,7 @@ export default function StudentLeaveRequest() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Leave Type</label>
-                <select 
+                <NativeSelect 
                   name="leaveType" 
                   value={formData.leaveType} 
                   onChange={handleChange} 
@@ -300,7 +303,7 @@ export default function StudentLeaveRequest() {
                   <option value="MEDICAL">🏥 Medical Leave</option>
                   <option value="EMERGENCY">🚨 Emergency Outpass</option>
                   <option value="OTHER">📁 Other</option>
-                </select>
+                </NativeSelect>
               </div>
               
               <div className="flex items-center mt-6">
