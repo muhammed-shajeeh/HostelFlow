@@ -112,14 +112,44 @@ export const SocketProvider = ({ children }) => {
     const socketUrl = getSocketUrl();
     const newSocket = io(socketUrl, {
       auth: { token },
+      transports: ['websocket', 'polling'],
+      timeout: 20000,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       randomizationFactor: 0.5
     });
 
+    const registerEmergencyListeners = (s) => {
+      s.off('EMERGENCY_ALERT');
+      s.off('EMERGENCY_RESOLVED');
+
+      s.on('EMERGENCY_ALERT', (alert) => {
+        console.log('[Socket.IO Client] Realtime EMERGENCY_ALERT received:', alert);
+        window.dispatchEvent(new CustomEvent('erp:emergencyAlert', { detail: alert }));
+      });
+
+      s.on('EMERGENCY_RESOLVED', (data) => {
+        console.log('[Socket.IO Client] Realtime EMERGENCY_RESOLVED received:', data);
+        window.dispatchEvent(new CustomEvent('erp:emergencyResolved', { detail: data }));
+      });
+    };
+
+    // Initialize listeners immediately
+    registerEmergencyListeners(newSocket);
+
     newSocket.on('connect', () => {
       console.log('[Socket.IO Client] Connected successfully with ID:', newSocket.id);
+      registerEmergencyListeners(newSocket);
+      window.dispatchEvent(new CustomEvent('erp:socketReconnect'));
+      fetchNotifications();
+      fetchBadgeSummary();
+    });
+
+    newSocket.on('reconnect', (attempt) => {
+      console.log('[Socket.IO Client] Reconnected successfully after attempts:', attempt);
+      registerEmergencyListeners(newSocket);
+      window.dispatchEvent(new CustomEvent('erp:socketReconnect'));
       fetchNotifications();
       fetchBadgeSummary();
     });

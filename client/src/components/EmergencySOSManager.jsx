@@ -4,6 +4,8 @@ import { useSocket } from '../context/SocketContext';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { ShieldAlert, Volume2, VolumeX, CheckCircle, Clock, X, HelpCircle } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 export default function EmergencySOSManager() {
   const { user } = useContext(AuthContext);
@@ -49,33 +51,85 @@ export default function EmergencySOSManager() {
   // ────────────────────────────────────────────────────────
   // 2. Fetch Active Alerts on Mount (Wardens/Security/Admins)
   // ────────────────────────────────────────────────────────
+  const fetchActiveAlerts = async () => {
+    if (!user || !(user.role === 'WARDEN' || user.role === 'SECURITY' || user.role === 'ADMIN')) return;
+    try {
+      const res = await api.get('/emergency/alerts/active');
+      if (res.data.success && res.data.alerts) {
+        setActiveAlerts(res.data.alerts);
+      }
+    } catch (err) {
+      console.warn('[SOS Manager] Failed to fetch active alerts list', err);
+    }
+  };
+
   useEffect(() => {
     if (user && (user.role === 'WARDEN' || user.role === 'SECURITY' || user.role === 'ADMIN')) {
-      const fetchActiveAlerts = async () => {
-        try {
-          const res = await api.get('/emergency/alerts/active');
-          if (res.data.success && res.data.alerts) {
-            setActiveAlerts(res.data.alerts);
-          }
-        } catch (err) {
-          console.warn('[SOS Manager] Failed to fetch active alerts list', err);
-        }
-      };
-
       fetchActiveAlerts();
     }
   }, [user]);
 
   // ────────────────────────────────────────────────────────
-  // 3. Socket.IO Real-time SOS Trigger Observers
+  // 2.1 App Foreground / Resume Synchronization fallbacks
   // ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!socket || !user) return;
+    if (!user) return;
+    const isAuthority = user.role === 'WARDEN' || user.role === 'SECURITY' || user.role === 'ADMIN';
+    if (!isAuthority) return;
+
+    // Visibility focus transitions
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[SOS Manager] Focus regained (visibilitychange). Refreshing active alerts...');
+        fetchActiveAlerts();
+      }
+    };
+
+    // Network online transitions
+    const handleNetworkOnline = () => {
+      console.log('[SOS Manager] Network online. Refreshing active alerts...');
+      fetchActiveAlerts();
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleNetworkOnline);
+
+    // Capacitor Native app resume listener
+    let appStateListener = null;
+    if (Capacitor.isNativePlatform()) {
+      try {
+        appStateListener = CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+          console.log(`[SOS Manager] Capacitor app state changed. isActive: ${isActive}`);
+          if (isActive) {
+            console.log('[SOS Manager] Native app resumed to foreground. Fetching active alerts...');
+            fetchActiveAlerts();
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to bind Capacitor App state listener in SOS Manager', err);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleNetworkOnline);
+      if (appStateListener) {
+        appStateListener.remove();
+      }
+    };
+  }, [user]);
+
+  // ────────────────────────────────────────────────────────
+  // 3. Custom Event-Driven SOS Trigger Observers
+  // ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
 
     // Wardens, Security terminals, and Admins handle active alerts & sirens
     const isAuthority = user.role === 'WARDEN' || user.role === 'SECURITY' || user.role === 'ADMIN';
 
-    const handleNewAlert = (alert) => {
+    const handleNewAlert = (e) => {
+      const alert = e.detail;
       if (isAuthority) {
         // Double-check isolated hostel eligibility (Admin can see all, others only see their hostel)
         if (user.role === 'ADMIN' || (user.hostelId && alert.hostelId?._id === user.hostelId)) {
@@ -98,7 +152,8 @@ export default function EmergencySOSManager() {
       }
     };
 
-    const handleResolvedAlert = (data) => {
+    const handleResolvedAlert = (e) => {
+      const data = e.detail;
       if (isAuthority) {
         setActiveAlerts((prev) => prev.filter((a) => a._id !== data.alertId));
         toast.success(`✅ Emergency Alert Marked Resolved by ${data.resolvedBy}`, {
@@ -107,20 +162,31 @@ export default function EmergencySOSManager() {
       }
     };
 
-    socket.on('EMERGENCY_ALERT', handleNewAlert);
-    socket.on('EMERGENCY_RESOLVED', handleResolvedAlert);
+    const handleSocketReconnect = () => {
+      console.log('[SOS Manager] Reconnect-safe trigger: Socket reconnected, fetching alerts...');
+      if (isAuthority) {
+        fetchActiveAlerts();
+      }
+    };
+
+    window.addEventListener('erp:emergencyAlert', handleNewAlert);
+    window.addEventListener('erp:emergencyResolved', handleResolvedAlert);
+    window.addEventListener('erp:socketReconnect', handleSocketReconnect);
 
     return () => {
-      socket.off('EMERGENCY_ALERT', handleNewAlert);
-      socket.off('EMERGENCY_RESOLVED', handleResolvedAlert);
+      window.removeEventListener('erp:emergencyAlert', handleNewAlert);
+      window.removeEventListener('erp:emergencyResolved', handleResolvedAlert);
+      window.removeEventListener('erp:socketReconnect', handleSocketReconnect);
     };
-  }, [socket, user]);
+  }, [user]);
 
   // ────────────────────────────────────────────────────────
   // 4. Web Audio Siren Synthesizer Loop Engine
   // ────────────────────────────────────────────────────────
+  const hasActiveAlerts = activeAlerts.length > 0;
+
   useEffect(() => {
-    const shouldPlaySiren = activeAlerts.length > 0 && !isMuted;
+    const shouldPlaySiren = hasActiveAlerts && !isMuted;
 
     if (shouldPlaySiren) {
       if (!sirenIntervalRef.current) {
@@ -183,7 +249,7 @@ export default function EmergencySOSManager() {
         audioCtxRef.current = null;
       }
     };
-  }, [activeAlerts, isMuted]);
+  }, [hasActiveAlerts, isMuted]);
 
   // ────────────────────────────────────────────────────────
   // 5. Student SOS Trigger & Network Communication Handler
@@ -307,7 +373,7 @@ export default function EmergencySOSManager() {
     const primaryAlert = activeAlerts[0]; // Display the most recent active emergency alert prominently
 
     return (
-      <div className="fixed inset-0 bg-red-950/95 backdrop-blur-md flex flex-col justify-center items-center p-6 z-[9999] animate-in fade-in duration-200 overflow-y-auto">
+      <div className="fixed inset-0 bg-red-950/95 backdrop-blur-md flex flex-col justify-center items-center p-6 z-[999999] animate-in fade-in duration-200 overflow-y-auto">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(220,38,38,0.18),transparent)] pointer-events-none"></div>
 
         <div className="max-w-md w-full bg-white dark:bg-zinc-900 border-2 border-red-500 rounded-3xl p-6 shadow-2xl space-y-6 relative overflow-hidden">
