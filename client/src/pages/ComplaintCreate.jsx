@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
 
 // Category labels for the dropdown
 const CATEGORIES = [
@@ -103,7 +104,7 @@ export default function ComplaintCreate() {
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Category <span className="text-red-500">*</span>
             </label>
-            <select
+            <NativeSelect
               name="category"
               value={formData.category}
               onChange={handleChange}
@@ -114,7 +115,7 @@ export default function ComplaintCreate() {
               {CATEGORIES.map(cat => (
                 <option key={cat.value} value={cat.value}>{cat.label}</option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           {/* Priority */}

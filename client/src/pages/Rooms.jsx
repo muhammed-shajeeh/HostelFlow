@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
+import NativeSelect from '../components/NativeSelect';
 
 export default function Rooms() {
   const { user } = useContext(AuthContext);
@@ -128,7 +129,7 @@ export default function Rooms() {
       {user.role === 'ADMIN' && (
         <div className="mb-6 bg-white p-4 rounded shadow border flex items-center gap-4">
           <label className="font-bold text-gray-700">Select Hostel:</label>
-          <select 
+          <NativeSelect 
             value={selectedHostel} 
             onChange={(e) => {
               setSelectedHostel(e.target.value);
@@ -137,7 +138,7 @@ export default function Rooms() {
             className="p-2 border rounded focus:ring-2 focus:ring-blue-500 flex-1"
           >
             {hostels.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-          </select>
+          </NativeSelect>
         </div>
       )}
 
@@ -228,20 +229,20 @@ export default function Rooms() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-1">Room Type</label>
-                  <select name="roomType" value={formData.roomType} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
+                  <NativeSelect name="roomType" value={formData.roomType} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
                     <option value="SINGLE">Single</option>
                     <option value="DOUBLE">Double</option>
                     <option value="TRIPLE">Triple</option>
                     <option value="DORMITORY">Dormitory</option>
-                  </select>
+                  </NativeSelect>
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-1">Gender Focus</label>
-                  <select name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
+                  <NativeSelect name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
                     <option value="BOYS">Boys</option>
                     <option value="GIRLS">Girls</option>
                     <option value="MIXED">Mixed</option>
-                  </select>
+                  </NativeSelect>
                 </div>
               </div>
               

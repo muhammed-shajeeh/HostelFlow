@@ -4,6 +4,8 @@ import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { Calendar, Bell, ArrowLeft, ShieldAlert, Sparkles, Clock, RefreshCw } from 'lucide-react';
+import NativeSelect from '../components/NativeSelect';
+import DateTimePicker from '../components/DateTimePicker';
 
 export default function NoticeCreate() {
   const { user } = useContext(AuthContext);
@@ -122,7 +124,7 @@ export default function NoticeCreate() {
             {/* Target Scope */}
             <div>
               <label className="block text-xs font-black uppercase text-slate-400 tracking-wider mb-2">Publishing Scope</label>
-              <select
+              <NativeSelect
                 name="targetType"
                 value={formData.targetType}
                 onChange={handleChange}
@@ -131,7 +133,7 @@ export default function NoticeCreate() {
               >
                 <option value="HOSTEL">Isolated Hostel</option>
                 {user?.role === 'ADMIN' && <option value="GLOBAL">Global System Broadcast</option>}
-              </select>
+              </NativeSelect>
               {user?.role === 'WARDEN' && (
                 <p className="text-[10px] text-slate-400 font-bold mt-1.5">Wardens are locked to assigned hostel.</p>
               )}
@@ -142,7 +144,7 @@ export default function NoticeCreate() {
               <div>
                 <label className="block text-xs font-black uppercase text-slate-400 tracking-wider mb-2">Target Hostel</label>
                 {user?.role === 'ADMIN' ? (
-                  <select
+                  <NativeSelect
                     name="hostelId"
                     value={formData.hostelId}
                     onChange={handleChange}
@@ -151,7 +153,7 @@ export default function NoticeCreate() {
                   >
                     <option value="">-- Select Hostel Target --</option>
                     {hostels.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-                  </select>
+                  </NativeSelect>
                 ) : (
                   <input
                     type="text"
@@ -168,7 +170,7 @@ export default function NoticeCreate() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-black uppercase text-slate-400 tracking-wider mb-2">Priority Level</label>
-              <select
+              <NativeSelect
                 name="priority"
                 value={formData.priority}
                 onChange={handleChange}
@@ -177,22 +179,22 @@ export default function NoticeCreate() {
                 <option value="NORMAL">NORMAL priority</option>
                 <option value="IMPORTANT">⚠️ IMPORTANT priority</option>
                 <option value="EMERGENCY">🚨 EMERGENCY priority</option>
-              </select>
+              </NativeSelect>
             </div>
 
             <div>
               <label className="block text-xs font-black uppercase text-slate-400 tracking-wider mb-2">Audience Roles</label>
-              <select
+              <NativeSelect
                 name="audienceScope"
                 value={formData.audienceScope}
                 onChange={handleChange}
                 className="w-full text-xs p-3.5 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none cursor-pointer"
               >
-                <option value="ALL">All Roles (Students, Parents & Wardens)</option>
+                <option value="ALL">All Roles (Students, Parents &amp; Wardens)</option>
                 <option value="STUDENTS">Students Only</option>
                 <option value="PARENTS">Parents Only</option>
                 <option value="WARDENS">Wardens Only</option>
-              </select>
+              </NativeSelect>
             </div>
           </div>
 
@@ -230,7 +232,7 @@ export default function NoticeCreate() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Publish Date & Time</label>
-                  <input
+                  <DateTimePicker
                     type="datetime-local"
                     name="publishAt"
                     value={formData.publishAt}
@@ -249,7 +251,7 @@ export default function NoticeCreate() {
             {/* Auto Expiry */}
             <div>
               <label className="block text-xs font-black uppercase text-slate-400 tracking-wider mb-2">Automatic Expiry (Optional)</label>
-              <input
+              <DateTimePicker
                 type="date"
                 name="expiresAt"
                 value={formData.expiresAt}
@@ -265,7 +267,7 @@ export default function NoticeCreate() {
               <label className="block text-xs font-black uppercase text-slate-400 tracking-wider mb-2 flex items-center gap-1">
                 <RefreshCw size={12} className="text-slate-400" /> Recurrence Interval
               </label>
-              <select
+              <NativeSelect
                 name="recurrenceType"
                 value={formData.recurrenceType}
                 onChange={handleChange}
@@ -275,7 +277,7 @@ export default function NoticeCreate() {
                 <option value="DAILY">Repeat Daily</option>
                 <option value="WEEKLY">Repeat Weekly</option>
                 <option value="MONTHLY">Repeat Monthly</option>
-              </select>
+              </NativeSelect>
               <p className="text-[9px] text-slate-400 font-bold mt-1.5">Automatically clones a fresh scheduled notice instance at interval limits.</p>
             </div>
           </div>

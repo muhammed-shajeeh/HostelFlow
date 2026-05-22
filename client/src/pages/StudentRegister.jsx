@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
+import DateTimePicker from '../components/DateTimePicker';
 
 // High-fidelity vector SVG logo based exactly on visual reference
 const HostelFlowLogo = ({ className = "w-6 h-6", color = "currentColor" }) => (
@@ -372,7 +374,7 @@ export default function StudentRegister() {
 
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Gender</label>
-                    <select
+                    <NativeSelect
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
@@ -381,17 +383,17 @@ export default function StudentRegister() {
                       <option value="MALE">Male</option>
                       <option value="FEMALE">Female</option>
                       <option value="OTHER">Other</option>
-                    </select>
+                    </NativeSelect>
                   </div>
 
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Date of Birth</label>
-                    <input
-                      required
+                    <DateTimePicker
                       type="date"
                       name="dob"
                       value={formData.dob}
                       onChange={handleChange}
+                      required
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-850 focus:outline-none focus:border-blue-600 transition font-semibold"
                     />
                   </div>
@@ -507,7 +509,7 @@ export default function StudentRegister() {
 
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Relationship to Student</label>
-                    <select
+                    <NativeSelect
                       name="parentRelationship"
                       value={formData.parentRelationship}
                       onChange={handleChange}
@@ -516,7 +518,7 @@ export default function StudentRegister() {
                       <option value="Father">Father</option>
                       <option value="Mother">Mother</option>
                       <option value="Guardian">Legal Guardian</option>
-                    </select>
+                    </NativeSelect>
                   </div>
 
                   <div className="md:col-span-2">
@@ -561,7 +563,7 @@ export default function StudentRegister() {
                         {hostelError}
                       </div>
                     ) : (
-                      <select 
+                      <NativeSelect 
                         name="hostelId" 
                         value={formData.hostelId} 
                         onChange={handleChange} 
@@ -574,7 +576,7 @@ export default function StudentRegister() {
                             {h.name} ({h.gender})
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     )}
                   </div>
 
@@ -587,14 +589,14 @@ export default function StudentRegister() {
                         <span className="text-[10px] font-bold">Filtering available rooms...</span>
                       </div>
                     ) : rooms.length === 0 ? (
-                      <select 
+                      <NativeSelect 
                         disabled
                         className="w-full bg-slate-100 border border-slate-200 rounded-lg p-3 text-slate-400 focus:outline-none cursor-not-allowed font-semibold"
                       >
                         <option>Auto-allocated upon Warden approval</option>
-                      </select>
+                      </NativeSelect>
                     ) : (
-                      <select 
+                      <NativeSelect 
                         name="preferredRoom"
                         value={formData.preferredRoom} 
                         onChange={handleChange} 
@@ -606,13 +608,13 @@ export default function StudentRegister() {
                             Room {r.roomNumber} ({r.availableBeds} beds left)
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-[9px] uppercase tracking-wider text-slate-500 mb-1">Food Preference</label>
-                    <select
+                    <NativeSelect
                       name="foodPreference"
                       value={formData.foodPreference}
                       onChange={handleChange}
@@ -620,7 +622,7 @@ export default function StudentRegister() {
                     >
                       <option value="Vegetarian">Vegetarian</option>
                       <option value="Non-Vegetarian">Non-Vegetarian</option>
-                    </select>
+                    </NativeSelect>
                   </div>
 
                   <div>
