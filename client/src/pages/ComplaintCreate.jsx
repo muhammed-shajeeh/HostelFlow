@@ -108,7 +108,7 @@ export default function ComplaintCreate() {
               name="category"
               value={formData.category}
               onChange={handleChange}
-              required
+              placeholder="-- Select Category --"
               className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             >
               <option value="">-- Select Category --</option>
@@ -129,11 +129,10 @@ export default function ComplaintCreate() {
                   type="button"
                   key={p.value}
                   onClick={() => setFormData({ ...formData, priority: p.value })}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold border-2 transition ${
-                    formData.priority === p.value
+                  className={`px-4 py-2 rounded-lg text-sm font-bold border-2 transition ${formData.priority === p.value
                       ? 'border-blue-500 ring-2 ring-blue-300 ' + p.color
                       : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   {p.label}
                 </button>

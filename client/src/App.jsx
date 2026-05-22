@@ -13,6 +13,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
+import EmergencySOSManager from './components/EmergencySOSManager';
 
 import NavbarLayout from './layouts/NavbarLayout';
 import SidebarLayout from './layouts/SidebarLayout';
@@ -210,6 +211,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <SocketProvider>
+            <EmergencySOSManager />
             <BrowserRouter>
             <HardwareBackHandler />
             <Toaster 

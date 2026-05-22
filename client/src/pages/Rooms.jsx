@@ -2,7 +2,6 @@ import { useState, useEffect, useContext } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
-import NativeSelect from '../components/NativeSelect';
 
 export default function Rooms() {
   const { user } = useContext(AuthContext);
@@ -115,7 +114,7 @@ export default function Rooms() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Room Management</h2>
-        <button 
+        <button
           onClick={() => {
             if (!selectedHostel) return toast.error('Select a hostel first');
             setShowModal(true);
@@ -129,8 +128,8 @@ export default function Rooms() {
       {user.role === 'ADMIN' && (
         <div className="mb-6 bg-white p-4 rounded shadow border flex items-center gap-4">
           <label className="font-bold text-gray-700">Select Hostel:</label>
-          <NativeSelect 
-            value={selectedHostel} 
+          <select
+            value={selectedHostel}
             onChange={(e) => {
               setSelectedHostel(e.target.value);
               setFormData(prev => ({ ...prev, hostelId: e.target.value }));
@@ -138,7 +137,7 @@ export default function Rooms() {
             className="p-2 border rounded focus:ring-2 focus:ring-blue-500 flex-1"
           >
             {hostels.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
-          </NativeSelect>
+          </select>
         </div>
       )}
 
@@ -175,7 +174,7 @@ export default function Rooms() {
                           {occupancyPct === 100 ? 'FULL' : 'AVAILABLE'}
                         </span>
                       </div>
-                      
+
                       <div className="text-sm mb-4 space-y-2 bg-gray-50 p-3 rounded">
                         <div className="flex justify-between">
                           <span className="text-gray-600">Capacity:</span>
@@ -229,23 +228,23 @@ export default function Rooms() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-1">Room Type</label>
-                  <NativeSelect name="roomType" value={formData.roomType} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
+                  <select name="roomType" value={formData.roomType} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
                     <option value="SINGLE">Single</option>
                     <option value="DOUBLE">Double</option>
                     <option value="TRIPLE">Triple</option>
                     <option value="DORMITORY">Dormitory</option>
-                  </NativeSelect>
+                  </select>
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-1">Gender Focus</label>
-                  <NativeSelect name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
+                  <select name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:outline-none">
                     <option value="BOYS">Boys</option>
                     <option value="GIRLS">Girls</option>
                     <option value="MIXED">Mixed</option>
-                  </NativeSelect>
+                  </select>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-6">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded hover:bg-gray-100 cancel">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">

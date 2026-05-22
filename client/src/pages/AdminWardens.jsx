@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { Edit2, Trash2, Key, Users, Home, ShieldCheck } from 'lucide-react';
-import NativeSelect from '../components/NativeSelect';
 
 export default function AdminWardens() {
   const [wardens, setWardens] = useState([]);
@@ -11,7 +10,7 @@ export default function AdminWardens() {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedWarden, setSelectedWarden] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -45,11 +44,11 @@ export default function AdminWardens() {
         api.get('/hostels')
       ]);
       setWardens(wardenRes.data.wardens);
-      
+
       // Only show hostels that don't have a warden
       const availableHostels = hostelRes.data.hostels.filter(h => !h.warden);
       setHostels(availableHostels);
-      
+
       if (availableHostels.length > 0) {
         setFormData(prev => ({ ...prev, hostelId: availableHostels[0]._id }));
       }
@@ -160,7 +159,7 @@ export default function AdminWardens() {
             Safely assign, edit credentials, reassign, or deactivate warden roles with zero hostel data loss.
           </p>
         </div>
-        <button 
+        <button
           onClick={() => {
             if (hostels.length === 0) {
               toast.error('Please create a hostel without a warden first!');
@@ -292,14 +291,14 @@ export default function AdminWardens() {
                       <div className="flex items-center justify-center gap-2">
                         {warden.isActive !== false ? (
                           <>
-                            <button 
+                            <button
                               onClick={() => handleEditClick(warden)}
                               className="p-1.5 text-blue-600 dark:text-blue-450 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-transparent hover:border-blue-100 dark:hover:border-blue-500/20 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                               title="Edit Account Details"
                             >
                               <Edit2 size={13} />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleDeactivateClick(warden)}
                               className="p-1.5 text-amber-600 dark:text-amber-450 hover:bg-amber-50 dark:hover:bg-amber-500/10 border border-transparent hover:border-amber-100 dark:hover:border-amber-500/20 rounded-lg transition-all cursor-pointer flex items-center justify-center"
                               title="Deactivate Warden"
@@ -308,7 +307,7 @@ export default function AdminWardens() {
                             </button>
                           </>
                         ) : (
-                          <button 
+                          <button
                             onClick={() => handleReactivateClick(warden)}
                             className="inline-flex items-center gap-1 bg-green-600 hover:bg-green-700 active:scale-[0.98] transition-all text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-sm cursor-pointer"
                             title="Reactivate Warden"
@@ -355,13 +354,13 @@ export default function AdminWardens() {
               </div>
               <div>
                 <label className="block text-slate-500 dark:text-zinc-400 mb-1">Hostel Allocation</label>
-                <NativeSelect name="hostelId" value={formData.hostelId} onChange={handleChange} required className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold">
+                <select name="hostelId" value={formData.hostelId} onChange={handleChange} required className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold">
                   {hostels.map(h => (
                     <option key={h._id} value={h._id}>{h.name} ({h.hostelCode})</option>
                   ))}
-                </NativeSelect>
+                </select>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-6 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-slate-200 dark:border-zinc-800 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50 cursor-pointer">
@@ -402,7 +401,7 @@ export default function AdminWardens() {
               </div>
               <div>
                 <label className="block text-slate-500 dark:text-zinc-400 mb-1">Hostel Allocation</label>
-                <NativeSelect name="hostelId" value={editFormData.hostelId} onChange={handleEditChange} className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold">
+                <select name="hostelId" value={editFormData.hostelId} onChange={handleEditChange} className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold">
                   <option value="">-- Unassigned (Free Floating) --</option>
                   {[
                     ...(selectedWarden?.hostelId ? [selectedWarden.hostelId] : []),
@@ -410,9 +409,9 @@ export default function AdminWardens() {
                   ].map(h => (
                     <option key={h._id} value={h._id}>{h.name} ({h.hostelCode})</option>
                   ))}
-                </NativeSelect>
+                </select>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-6 pt-2">
                 <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 border border-slate-200 dark:border-zinc-800 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-850 cursor-pointer">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl disabled:opacity-50 cursor-pointer">

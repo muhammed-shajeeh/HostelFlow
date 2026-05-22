@@ -63,6 +63,11 @@ const initSocket = (server) => {
       socket.join('ADMIN_GLOBAL');
     }
 
+    if (user.role === 'SECURITY' && user.hostelId) {
+      socket.join(`HOSTEL_${user.hostelId}`);
+      socket.join(`ROLE_SECURITY`);
+    }
+
     if (user.role === 'WARDEN' && user.hostelId) {
       socket.join(`HOSTEL_${user.hostelId}`);
       socket.join(`WARDEN_${user._id}`);

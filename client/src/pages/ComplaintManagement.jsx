@@ -73,11 +73,10 @@ function StatusModal({ complaint, onClose, onUpdated }) {
             <div className="flex flex-wrap gap-2">
               {['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'].map(s => (
                 <button
-                   key={s}
-                   onClick={() => setStatus(s)}
-                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${
-                     status === s ? 'border-blue-500 ring-2 ring-blue-200 ' + (STATUS_STYLES[s] || '') : 'border-gray-200 text-gray-500'
-                   }`}
+                  key={s}
+                  onClick={() => setStatus(s)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ${status === s ? 'border-blue-500 ring-2 ring-blue-200 ' + (STATUS_STYLES[s] || '') : 'border-gray-200 text-gray-500'
+                    }`}
                 >
                   {s.replace('_', ' ')}
                 </button>
@@ -196,9 +195,9 @@ export default function ComplaintManagement() {
 
       {/* Filter Bar */}
       <div className="bg-white border rounded-lg p-4 mb-6 flex flex-wrap gap-4 items-end shadow-sm">
-        <div>
+        <div className="w-40">
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-          <NativeSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-36">
+          <NativeSelect value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-full">
             <option value="ALL">All Statuses</option>
             <option value="OPEN">Open</option>
             <option value="IN_PROGRESS">In Progress</option>
@@ -206,9 +205,9 @@ export default function ComplaintManagement() {
             <option value="REJECTED">Rejected</option>
           </NativeSelect>
         </div>
-        <div>
+        <div className="w-40">
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Priority</label>
-          <NativeSelect value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-36">
+          <NativeSelect value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-full">
             <option value="ALL">All Priorities</option>
             <option value="URGENT">🚨 Urgent</option>
             <option value="HIGH">High</option>
@@ -216,18 +215,18 @@ export default function ComplaintManagement() {
             <option value="LOW">Low</option>
           </NativeSelect>
         </div>
-        <div>
+        <div className="w-40">
           <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
-          <NativeSelect value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-36">
+          <NativeSelect value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="p-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none w-full">
             <option value="ALL">All Categories</option>
-            {['ELECTRICAL','PLUMBING','FURNITURE','WIFI','CLEANING','SECURITY','HARASSMENT','MESS','ROOM_CHANGE','OTHER'].map(cat => (
+            {['ELECTRICAL', 'PLUMBING', 'FURNITURE', 'WIFI', 'CLEANING', 'SECURITY', 'HARASSMENT', 'MESS', 'ROOM_CHANGE', 'OTHER'].map(cat => (
               <option key={cat} value={cat}>{cat.replace('_', ' ')}</option>
             ))}
           </NativeSelect>
         </div>
         <button
           onClick={() => { setStatusFilter('ALL'); setPriorityFilter('ALL'); setCategoryFilter('ALL'); }}
-          className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 border rounded-lg hover:bg-gray-50 transition"
+          className="px-3 py-2 text-sm text-gray-500 hover:text-gray-800 border rounded-lg hover:bg-gray-50 transition cursor-pointer"
         >
           Clear Filters
         </button>
@@ -247,10 +246,9 @@ export default function ComplaintManagement() {
           {complaints.map(c => (
             <div
               key={c._id}
-              className={`bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition ${
-                c.priority === 'URGENT' ? 'border-l-4 border-l-red-500' :
-                c.priority === 'HIGH' ? 'border-l-4 border-l-orange-400' : ''
-              }`}
+              className={`bg-white border rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition ${c.priority === 'URGENT' ? 'border-l-4 border-l-red-500' :
+                  c.priority === 'HIGH' ? 'border-l-4 border-l-orange-400' : ''
+                }`}
             >
               <div className="space-y-3">
                 <div className="flex flex-wrap justify-between items-start gap-2">

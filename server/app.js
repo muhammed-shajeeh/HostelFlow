@@ -20,6 +20,7 @@ const securityRoutes = require('./routes/securityRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const auditRoutes = require('./routes/auditRoutes');
+const emergencyRoutes = require('./routes/emergencyRoutes');
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use('/api/security-gate', securityRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit-logs', auditRoutes);
+app.use('/api/emergency', emergencyRoutes);
 // Error handling middleware
 app.use(errorHandler);
 

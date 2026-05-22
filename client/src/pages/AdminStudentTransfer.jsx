@@ -1,20 +1,19 @@
 import { useState, useEffect } from 'react';
-import { 
-  Search, ArrowRight, Home, Bed, User, AlertCircle, CheckCircle, 
-  RefreshCw, FileText, ChevronRight, Layers, Users 
+import {
+  Search, ArrowRight, Home, Bed, User, AlertCircle, CheckCircle,
+  RefreshCw, FileText, ChevronRight, Layers, Users
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
-import NativeSelect from '../components/NativeSelect';
 
 export default function AdminStudentTransfer() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [students, setStudents] = useState([]);
-  
+
   // Selected student & current state
   const [selectedStudent, setSelectedStudent] = useState(null);
-  
+
   // Hostels & Destination selection state
   const [hostels, setHostels] = useState([]);
   const [availableRooms, setAvailableRooms] = useState([]);
@@ -22,7 +21,7 @@ export default function AdminStudentTransfer() {
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [loadingOccupants, setLoadingOccupants] = useState(false);
   const [occupiedBeds, setOccupiedBeds] = useState([]);
-  
+
   // Form selections
   const [destHostelId, setDestHostelId] = useState('');
   const [destRoomId, setDestRoomId] = useState('');
@@ -166,7 +165,7 @@ export default function AdminStudentTransfer() {
 
       if (res.data.success) {
         toast.success(res.data.message || 'Student transferred successfully!');
-        
+
         // Reset state
         setSelectedStudent(null);
         setDestHostelId('');
@@ -236,11 +235,10 @@ export default function AdminStudentTransfer() {
                   <div
                     key={student._id}
                     onClick={() => selectStudent(student)}
-                    className={`p-3 border rounded-xl cursor-pointer transition-all flex justify-between items-center ${
-                      selectedStudent?._id === student._id
+                    className={`p-3 border rounded-xl cursor-pointer transition-all flex justify-between items-center ${selectedStudent?._id === student._id
                         ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20'
                         : 'border-slate-100 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800/40'
-                    }`}
+                      }`}
                   >
                     <div>
                       <p className="font-bold text-sm text-slate-800 dark:text-zinc-150">{student.fullName}</p>
@@ -326,7 +324,7 @@ export default function AdminStudentTransfer() {
                     <label className="block text-xs font-bold uppercase text-slate-500 dark:text-zinc-400 mb-2">
                       Destination Hostel
                     </label>
-                    <NativeSelect
+                    <select
                       value={destHostelId}
                       onChange={(e) => {
                         setDestHostelId(e.target.value);
@@ -342,7 +340,7 @@ export default function AdminStudentTransfer() {
                           {hostel.name} ({hostel.gender} block)
                         </option>
                       ))}
-                    </NativeSelect>
+                    </select>
                     {/* Gender mismatch notice */}
                     {selectedHostelData && selectedStudent.hostelId?.gender && selectedHostelData.gender !== selectedStudent.hostelId.gender && selectedHostelData.gender !== 'MIXED' && (
                       <div className="mt-2 flex items-start gap-1.5 p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 rounded-lg text-xs">
@@ -357,7 +355,7 @@ export default function AdminStudentTransfer() {
                     <label className="block text-xs font-bold uppercase text-slate-500 dark:text-zinc-400 mb-2">
                       Available Rooms
                     </label>
-                    <NativeSelect
+                    <select
                       value={destRoomId}
                       onChange={(e) => {
                         setDestRoomId(e.target.value);
@@ -373,7 +371,7 @@ export default function AdminStudentTransfer() {
                           Room {room.roomNumber} (Floor {room.floor} - {room.roomType}) [{room.availableBeds} beds left]
                         </option>
                       ))}
-                    </NativeSelect>
+                    </select>
                     {loadingRooms && (
                       <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
                         <RefreshCw size={10} className="animate-spin" /> Loading rooms...
@@ -395,13 +393,13 @@ export default function AdminStudentTransfer() {
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                       {Array.from({ length: selectedRoomData.capacity }).map((_, i) => {
                         const bedNum = i + 1;
                         const isCurrentBed = selectedStudent.roomId?._id === destRoomId && selectedStudent.bedNumber === bedNum;
                         const isOccupied = occupiedBeds.includes(bedNum);
-                        
+
                         let btnStyle = "border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 hover:border-blue-500";
                         if (isCurrentBed) {
                           btnStyle = "border-amber-400 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 cursor-not-allowed";
@@ -433,7 +431,7 @@ export default function AdminStudentTransfer() {
                   <label className="block text-xs font-bold uppercase text-slate-500 dark:text-zinc-400">
                     Reason for Transfer
                   </label>
-                  
+
                   {/* Quick select buttons */}
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {QUICK_REASONS.map(reason => (
@@ -441,11 +439,10 @@ export default function AdminStudentTransfer() {
                         key={reason}
                         type="button"
                         onClick={() => setTransferReason(reason)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
-                          transferReason === reason
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${transferReason === reason
                             ? 'bg-blue-50 border-blue-300 text-blue-600 dark:bg-blue-950/20 dark:border-blue-800 dark:text-blue-400'
                             : 'bg-white border-slate-200 text-slate-500 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400 hover:bg-slate-50'
-                        }`}
+                          }`}
                       >
                         {reason}
                       </button>
@@ -470,7 +467,7 @@ export default function AdminStudentTransfer() {
                     <CheckCircle size={16} />
                     Atomic Transfer Preview
                   </h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-11 items-center gap-4 text-center md:text-left">
                     <div className="md:col-span-5 bg-white/10 p-3.5 rounded-xl border border-white/10 backdrop-blur-xs">
                       <p className="text-[10px] uppercase font-bold opacity-60">Source Location</p>
@@ -479,7 +476,7 @@ export default function AdminStudentTransfer() {
                         Room {selectedStudent.roomId?.roomNumber || 'N/A'} • Bed #{selectedStudent.bedNumber || 'N/A'}
                       </p>
                     </div>
-                    
+
                     <div className="md:col-span-1 flex justify-center">
                       <ArrowRight size={24} className="text-white/60 rotate-90 md:rotate-0" />
                     </div>

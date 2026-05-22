@@ -3,12 +3,10 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
-import { 
-  Bell, Calendar, Clock, Trash2, Edit3, ShieldAlert, 
+import {
+  Bell, Calendar, Clock, Trash2, Edit3, ShieldAlert,
   MapPin, User, RefreshCw, Layers, CheckCircle2, Lock, Tag, AlertTriangle
 } from 'lucide-react';
-import NativeSelect from '../components/NativeSelect';
-import DateTimePicker from '../components/DateTimePicker';
 
 const PRIORITY_THEMES = {
   EMERGENCY: 'border-red-200 bg-red-50/30 text-red-700 font-extrabold',
@@ -64,7 +62,7 @@ function EditModal({ notice, onClose, onUpdated }) {
     publishAt: notice.publishAt ? notice.publishAt.slice(0, 16) : '',
     recurrenceType: notice.recurrenceType || 'NONE'
   });
-  
+
   const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
@@ -102,15 +100,15 @@ function EditModal({ notice, onClose, onUpdated }) {
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-extrabold text-xl">×</button>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
             {/* Title */}
             <div>
               <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Announcement Title</label>
-              <input 
+              <input
                 type="text" name="title" value={formData.title} onChange={handleChange} required maxLength={150}
-                className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none" 
+                className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none"
               />
             </div>
 
@@ -118,23 +116,23 @@ function EditModal({ notice, onClose, onUpdated }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Priority</label>
-                <NativeSelect name="priority" value={formData.priority} onChange={handleChange}
+                <select name="priority" value={formData.priority} onChange={handleChange}
                   className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none">
                   <option value="NORMAL">Normal</option>
                   <option value="IMPORTANT">Important</option>
                   <option value="EMERGENCY">Emergency</option>
-                </NativeSelect>
+                </select>
               </div>
 
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Audience Roles</label>
-                <NativeSelect name="audienceScope" value={formData.audienceScope} onChange={handleChange}
+                <select name="audienceScope" value={formData.audienceScope} onChange={handleChange}
                   className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none">
                   <option value="ALL">All Roles</option>
                   <option value="STUDENTS">Students Only</option>
                   <option value="PARENTS">Parents Only</option>
                   <option value="WARDENS">Wardens Only</option>
-                </NativeSelect>
+                </select>
               </div>
             </div>
 
@@ -158,12 +156,8 @@ function EditModal({ notice, onClose, onUpdated }) {
               </div>
 
               {publishMode === 'LATER' && (
-                <DateTimePicker
-                  type="datetime-local"
-                  name="publishAt"
-                  value={formData.publishAt}
-                  onChange={handleChange}
-                  required
+                <input
+                  type="datetime-local" name="publishAt" value={formData.publishAt} onChange={handleChange} required
                   className="w-full text-xs p-2.5 border border-slate-200 bg-white rounded-xl focus:outline-none"
                 />
               )}
@@ -173,24 +167,19 @@ function EditModal({ notice, onClose, onUpdated }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Repeat Option</label>
-                <NativeSelect name="recurrenceType" value={formData.recurrenceType} onChange={handleChange}
+                <select name="recurrenceType" value={formData.recurrenceType} onChange={handleChange}
                   className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none">
                   <option value="NONE">No Repeat</option>
                   <option value="DAILY">Repeat Daily</option>
                   <option value="WEEKLY">Repeat Weekly</option>
                   <option value="MONTHLY">Repeat Monthly</option>
-                </NativeSelect>
+                </select>
               </div>
 
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Expiry Date</label>
-                <DateTimePicker
-                  type="date"
-                  name="expiresAt"
-                  value={formData.expiresAt}
-                  onChange={handleChange}
-                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none"
-                />
+                <input type="date" name="expiresAt" value={formData.expiresAt} onChange={handleChange}
+                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none" />
               </div>
             </div>
 
@@ -243,8 +232,8 @@ export default function NoticeManagement() {
     }
   };
 
-  useEffect(() => { 
-    fetchNotices(); 
+  useEffect(() => {
+    fetchNotices();
 
     const handleRefresh = (e) => {
       console.log('[Notice Management] Live Real-time Refresh Event Triggered:', e.detail);
@@ -280,9 +269,9 @@ export default function NoticeManagement() {
 
   const filtered = filter === 'ALL' ? notices
     : filter === 'PINNED' ? notices.filter(n => n.isPinned)
-    : filter === 'SCHEDULED' ? notices.filter(n => !n.isPublished || new Date(n.publishAt) > new Date())
-    : filter === 'RECURRING' ? notices.filter(n => n.isRecurring)
-    : notices.filter(n => n.priority === filter);
+      : filter === 'SCHEDULED' ? notices.filter(n => !n.isPublished || new Date(n.publishAt) > new Date())
+        : filter === 'RECURRING' ? notices.filter(n => n.isRecurring)
+          : notices.filter(n => n.priority === filter);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -307,14 +296,13 @@ export default function NoticeManagement() {
       {/* Filter Tabs */}
       <div className="flex flex-wrap gap-2 mb-6">
         {['ALL', 'PINNED', 'SCHEDULED', 'RECURRING', 'EMERGENCY', 'IMPORTANT', 'NORMAL'].map(f => (
-          <button 
-            key={f} 
+          <button
+            key={f}
             onClick={() => setFilter(f)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              filter === f 
-                ? 'bg-slate-900 text-white shadow-sm' 
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${filter === f
+                ? 'bg-slate-900 text-white shadow-sm'
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-            }`}
+              }`}
           >
             {f === 'EMERGENCY' ? '🚨 ' : f === 'IMPORTANT' ? '⚠️ ' : f === 'PINNED' ? '📌 ' : f === 'SCHEDULED' ? '⏰ ' : f === 'RECURRING' ? '🔄 ' : ''}{f}
           </button>
@@ -339,16 +327,15 @@ export default function NoticeManagement() {
           {filtered.map(n => {
             const isScheduled = !n.isPublished || new Date(n.publishAt) > new Date();
             const isExpired = n.expiresAt && new Date(n.expiresAt) <= new Date();
-            
+
             // Perms Check
             const canModify = user?.role === 'ADMIN' || (user?.role === 'WARDEN' && n.createdBy?._id === user?._id);
 
             return (
-              <div 
-                key={n._id} 
-                className={`relative bg-white border rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
-                  PRIORITY_THEMES[n.priority]
-                } ${n.isPinned ? 'ring-2 ring-blue-500/20' : ''}`}
+              <div
+                key={n._id}
+                className={`relative bg-white border rounded-3xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${PRIORITY_THEMES[n.priority]
+                  } ${n.isPinned ? 'ring-2 ring-blue-500/20' : ''}`}
               >
                 {/* Badges line */}
                 <div>
@@ -421,15 +408,15 @@ export default function NoticeManagement() {
                     <div className="flex items-center gap-2">
                       {canModify ? (
                         <>
-                          <button 
-                            onClick={() => setToEdit(n)} 
+                          <button
+                            onClick={() => setToEdit(n)}
                             className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                             title="Edit notice"
                           >
                             <Edit3 size={13} />
                           </button>
-                          <button 
-                            onClick={() => setToDelete(n)} 
+                          <button
+                            onClick={() => setToDelete(n)}
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition cursor-pointer"
                             title="Delete notice"
                           >
