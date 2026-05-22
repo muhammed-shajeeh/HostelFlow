@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
+import DateTimePicker from '../components/DateTimePicker';
 import {
   Bell, Calendar, Clock, Trash2, Edit3, ShieldAlert,
   MapPin, User, RefreshCw, Layers, CheckCircle2, Lock, Tag, AlertTriangle
@@ -112,27 +114,26 @@ function EditModal({ notice, onClose, onUpdated }) {
               />
             </div>
 
-            {/* Config Grids */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Priority</label>
-                <select name="priority" value={formData.priority} onChange={handleChange}
-                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none">
+                <NativeSelect name="priority" value={formData.priority} onChange={handleChange}
+                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none font-bold">
                   <option value="NORMAL">Normal</option>
                   <option value="IMPORTANT">Important</option>
                   <option value="EMERGENCY">Emergency</option>
-                </select>
+                </NativeSelect>
               </div>
 
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Audience Roles</label>
-                <select name="audienceScope" value={formData.audienceScope} onChange={handleChange}
-                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none">
+                <NativeSelect name="audienceScope" value={formData.audienceScope} onChange={handleChange}
+                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none font-bold">
                   <option value="ALL">All Roles</option>
                   <option value="STUDENTS">Students Only</option>
                   <option value="PARENTS">Parents Only</option>
                   <option value="WARDENS">Wardens Only</option>
-                </select>
+                </NativeSelect>
               </div>
             </div>
 
@@ -156,9 +157,9 @@ function EditModal({ notice, onClose, onUpdated }) {
               </div>
 
               {publishMode === 'LATER' && (
-                <input
+                <DateTimePicker
                   type="datetime-local" name="publishAt" value={formData.publishAt} onChange={handleChange} required
-                  className="w-full text-xs p-2.5 border border-slate-200 bg-white rounded-xl focus:outline-none"
+                  className="w-full text-xs p-2.5 border border-slate-200 bg-white rounded-xl focus:outline-none font-bold"
                 />
               )}
             </div>
@@ -167,19 +168,19 @@ function EditModal({ notice, onClose, onUpdated }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Repeat Option</label>
-                <select name="recurrenceType" value={formData.recurrenceType} onChange={handleChange}
-                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none">
+                <NativeSelect name="recurrenceType" value={formData.recurrenceType} onChange={handleChange}
+                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none font-bold">
                   <option value="NONE">No Repeat</option>
                   <option value="DAILY">Repeat Daily</option>
                   <option value="WEEKLY">Repeat Weekly</option>
                   <option value="MONTHLY">Repeat Monthly</option>
-                </select>
+                </NativeSelect>
               </div>
 
               <div>
                 <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Expiry Date</label>
-                <input type="date" name="expiresAt" value={formData.expiresAt} onChange={handleChange}
-                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none" />
+                <DateTimePicker type="date" name="expiresAt" value={formData.expiresAt} onChange={handleChange}
+                  className="w-full text-xs p-3 border border-slate-200 bg-slate-50 rounded-xl focus:outline-none font-bold" />
               </div>
             </div>
 

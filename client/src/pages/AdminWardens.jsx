@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { Edit2, Trash2, Key, Users, Home, ShieldCheck } from 'lucide-react';
+import NativeSelect from '../components/NativeSelect';
 
 export default function AdminWardens() {
   const [wardens, setWardens] = useState([]);
@@ -354,11 +355,11 @@ export default function AdminWardens() {
               </div>
               <div>
                 <label className="block text-slate-500 dark:text-zinc-400 mb-1">Hostel Allocation</label>
-                <select name="hostelId" value={formData.hostelId} onChange={handleChange} required className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold">
+                <NativeSelect name="hostelId" value={formData.hostelId} onChange={handleChange} className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold" placeholder="Select Hostel">
                   {hostels.map(h => (
                     <option key={h._id} value={h._id}>{h.name} ({h.hostelCode})</option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="flex justify-end gap-2 mt-6 pt-2">
@@ -401,7 +402,7 @@ export default function AdminWardens() {
               </div>
               <div>
                 <label className="block text-slate-500 dark:text-zinc-400 mb-1">Hostel Allocation</label>
-                <select name="hostelId" value={editFormData.hostelId} onChange={handleEditChange} className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold">
+                <NativeSelect name="hostelId" value={editFormData.hostelId} onChange={handleEditChange} className="w-full p-2.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none dark:text-white font-bold" placeholder="Select Hostel">
                   <option value="">-- Unassigned (Free Floating) --</option>
                   {[
                     ...(selectedWarden?.hostelId ? [selectedWarden.hostelId] : []),
@@ -409,7 +410,7 @@ export default function AdminWardens() {
                   ].map(h => (
                     <option key={h._id} value={h._id}>{h.name} ({h.hostelCode})</option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
 
               <div className="flex justify-end gap-2 mt-6 pt-2">

@@ -60,6 +60,7 @@ export default function StudentBilling() {
       setMealRecords(res.data.records || []);
     } catch (error) {
       console.log('Failed to fetch daily meal records', error);
+      toast.error('Failed to load daily meal consumption history.');
     } finally {
       setLoadingLedger(false);
     }

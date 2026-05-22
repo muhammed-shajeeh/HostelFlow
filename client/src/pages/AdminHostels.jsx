@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
 
 export default function AdminHostels() {
   const [hostels, setHostels] = useState([]);
@@ -133,11 +134,11 @@ export default function AdminHostels() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Gender</label>
-                <select name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <NativeSelect name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-xs font-bold">
                   <option value="BOYS">Boys</option>
                   <option value="GIRLS">Girls</option>
                   <option value="MIXED">Mixed</option>
-                </select>
+                </NativeSelect>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Total Floors</label>

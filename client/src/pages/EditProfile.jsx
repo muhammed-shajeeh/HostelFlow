@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
+import NativeSelect from '../components/NativeSelect';
 
 export default function EditProfile() {
   const { user, login, token } = useContext(AuthContext);
@@ -97,11 +98,11 @@ export default function EditProfile() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Year of Study</label>
-                    <select
+                    <NativeSelect
                       name="year"
                       value={formData.year}
                       onChange={handleChange}
-                      className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2 border rounded bg-white focus:ring-2 focus:ring-blue-500 outline-none text-xs font-bold"
                     >
                       <option value="">Select Year</option>
                       <option value="1">1st Year</option>
@@ -109,7 +110,7 @@ export default function EditProfile() {
                       <option value="3">3rd Year</option>
                       <option value="4">4th Year</option>
                       <option value="5">5th Year</option>
-                    </select>
+                    </NativeSelect>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>

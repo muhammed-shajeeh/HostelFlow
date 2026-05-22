@@ -180,6 +180,7 @@ export default function WardenMessManagement() {
       setStudentsList(res.data.students || []);
     } catch (error) {
       console.log('Failed to fetch students', error);
+      toast.error('Failed to load student records directory.');
     } finally {
       setLoadingStudents(false);
     }
@@ -278,6 +279,7 @@ export default function WardenMessManagement() {
       setTransactions(res.data.transactions || res.data.payments || []);
     } catch (error) {
       console.log('Failed to fetch ledger logs', error);
+      toast.error('Failed to load master ledger transaction history.');
     } finally {
       setLoadingTransactions(false);
     }
