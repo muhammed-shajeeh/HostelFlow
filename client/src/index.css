@@ -4,6 +4,9 @@
 @variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
   html, body, #root {
     margin: 0;
     padding: 0;
@@ -224,22 +227,5 @@
   .safe-top-padding {
     padding-top: calc(env(safe-area-inset-top) + 0.5rem) !important;
   }
-}
-
-/* ──────────────────────────────────────────────────────────────────────────
-   ANDROID WEBVIEW COMPATIBILITY FIXES FOR SELECTS & DATE PICKERS
-   ────────────────────────────────────────────────────────────────────────── */
-
-/* 1. Force light/dark color scheme hints so Chromium requests matching native dialogs */
-select,
-input[type="date"],
-input[type="datetime-local"] {
-  color-scheme: light dark !important;
-}
-
-/* 2. Standardize native option dropdown items to prevent white-on-white text */
-select option {
-  background-color: canvas !important;
-  color: canvastext !important;
 }
 

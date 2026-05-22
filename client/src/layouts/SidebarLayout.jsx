@@ -373,7 +373,7 @@ export default function SidebarLayout() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-zinc-950">
         {/* Responsive Top Header */}
-        <header className="bg-white dark:bg-zinc-900 shadow-xs border-b border-slate-200 dark:border-zinc-800 px-4 md:px-6 py-4 flex justify-between items-center z-10 safe-top-padding">
+        <header className="bg-white dark:bg-zinc-900 shadow-xs border-b border-slate-200 dark:border-zinc-800 px-4 md:px-6 py-4 flex justify-between items-center z-50 relative safe-top-padding">
           <div className="flex items-center gap-3">
             {/* Hamburger menu button for mobile */}
             <button 
