@@ -4,36 +4,34 @@ import toast from 'react-hot-toast';
 import { QRCodeCanvas } from 'qrcode.react';
 import { AuthContext } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
-import { Link } from 'react-router-dom';
 import NativeSelect from '../components/NativeSelect';
-import DateTimePicker from '../components/DateTimePicker';
-import { 
-  Download, 
-  Maximize2, 
-  Sun, 
-  X, 
-  AlertCircle, 
-  RefreshCw, 
-  Calendar, 
-  MapPin, 
-  Phone, 
-  FileText, 
-  PlusCircle, 
-  History, 
-  Clock, 
-  CheckCircle2, 
-  ShieldAlert 
+import {
+  Download,
+  Maximize2,
+  Sun,
+  X,
+  AlertCircle,
+  RefreshCw,
+  Calendar,
+  MapPin,
+  Phone,
+  FileText,
+  PlusCircle,
+  History,
+  Clock,
+  CheckCircle2,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function StudentLeaveRequest() {
   const { user } = useContext(AuthContext);
   const { refreshBadgeSummary } = useSocket();
-  
+
   // Leave lists and submission loading state
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Modal / High Contrast / Fullscreen States for Gate Pass
   const [selectedPass, setSelectedPass] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -66,7 +64,7 @@ export default function StudentLeaveRequest() {
       setLeaves(prev => {
         // If it belongs to this student, patch the state dynamically
         if (prev.some(l => l._id === updated._id)) {
-          toast.success(`Outpass status updated: ${updated.status}`, { 
+          toast.success(`Outpass status updated: ${updated.status}`, {
             icon: '🔔',
             style: {
               background: '#0f172a',
@@ -110,10 +108,10 @@ export default function StudentLeaveRequest() {
       const res = await api.post('/leaves/request', formData);
       if (res.data.success) {
         toast.success(res.data.message || 'Leave request submitted successfully');
-        
+
         // Dynamic state patching: refetch history to include the new request immediately
         await fetchHistory();
-        
+
         // Reset the form values
         setFormData({
           leaveType: 'HOME',
@@ -167,9 +165,9 @@ export default function StudentLeaveRequest() {
 
       // 1. Draw Background (Premium Slate-to-Teal Gradient)
       const gradient = ctx.createLinearGradient(0, 0, 0, 900);
-      gradient.addColorStop(0, '#0f172a'); 
-      gradient.addColorStop(0.5, '#1e293b'); 
-      gradient.addColorStop(1, '#0d9488'); 
+      gradient.addColorStop(0, '#0f172a');
+      gradient.addColorStop(0.5, '#1e293b');
+      gradient.addColorStop(1, '#0d9488');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 600, 900);
 
@@ -185,7 +183,7 @@ export default function StudentLeaveRequest() {
       ctx.textAlign = 'center';
       ctx.fillText('SMART HOSTEL OUTPASS', 300, 65);
 
-      ctx.fillStyle = '#2dd4bf'; 
+      ctx.fillStyle = '#2dd4bf';
       ctx.font = 'bold 12px system-ui, sans-serif';
       ctx.fillText('OFFICIAL DIGITAL AUTHORIZATION CARD', 300, 90);
 
@@ -197,9 +195,9 @@ export default function StudentLeaveRequest() {
 
       // Text configurations inside card details box
       ctx.textAlign = 'left';
-      
+
       // Secondary Labels
-      ctx.fillStyle = '#64748b'; 
+      ctx.fillStyle = '#64748b';
       ctx.font = 'bold 11px system-ui, sans-serif';
       ctx.fillText('STUDENT NAME', 70, 160);
       ctx.fillText('HOSTEL ACCOMMODATION', 70, 230);
@@ -209,15 +207,15 @@ export default function StudentLeaveRequest() {
       ctx.fillText('EXPECTED RETURN DATE', 340, 370);
 
       // Value items
-      ctx.fillStyle = '#0f172a'; 
+      ctx.fillStyle = '#0f172a';
       ctx.font = '900 18px system-ui, sans-serif';
       ctx.fillText(user?.fullName?.toUpperCase() || 'HOSTEL RESIDENT', 70, 190);
-      
+
       ctx.font = 'bold 16px system-ui, sans-serif';
       ctx.fillText(user?.hostelId?.name || 'MAIN HOSTEL', 70, 260);
       ctx.fillText(user?.room || 'N/A', 340, 260);
-      
-      ctx.fillStyle = '#0d9488'; 
+
+      ctx.fillStyle = '#0d9488';
       ctx.font = 'bold 16px system-ui, sans-serif';
       ctx.fillText(leave.leaveType || 'OUTPASS', 70, 330);
 
@@ -262,7 +260,7 @@ export default function StudentLeaveRequest() {
 
   return (
     <div className="space-y-8 pb-12 font-sans text-slate-800 dark:text-zinc-100 max-w-5xl mx-auto">
-      
+
       {/* Dynamic Header Banner */}
       <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-6 md:p-8 rounded-3xl text-white shadow-md flex items-center justify-between overflow-hidden relative">
         <div className="space-y-2 z-10">
@@ -280,7 +278,7 @@ export default function StudentLeaveRequest() {
 
       {/* Grid Layout: Top Form (Left) & Info Panel (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Column: Leave Request Form */}
         <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-xs space-y-6">
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-zinc-800 pb-3">
@@ -292,10 +290,10 @@ export default function StudentLeaveRequest() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Leave Type</label>
-                <NativeSelect 
-                  name="leaveType" 
-                  value={formData.leaveType} 
-                  onChange={handleChange} 
+                <NativeSelect
+                  name="leaveType"
+                  value={formData.leaveType}
+                  onChange={handleChange}
                   className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 font-bold text-xs"
                 >
                   <option value="HOME">🏠 Home Visit</option>
@@ -305,15 +303,15 @@ export default function StudentLeaveRequest() {
                   <option value="OTHER">📁 Other</option>
                 </NativeSelect>
               </div>
-              
+
               <div className="flex items-center mt-6">
                 <label className="flex items-center gap-2 text-xs font-bold text-red-650 dark:text-red-400 cursor-pointer select-none">
-                  <input 
-                    type="checkbox" 
-                    name="isEmergency" 
-                    checked={formData.isEmergency} 
-                    onChange={handleChange} 
-                    className="w-5 h-5 accent-red-650 rounded border-slate-200 dark:border-zinc-700" 
+                  <input
+                    type="checkbox"
+                    name="isEmergency"
+                    checked={formData.isEmergency}
+                    onChange={handleChange}
+                    className="w-5 h-5 accent-red-650 rounded border-slate-200 dark:border-zinc-700"
                   />
                   Mark as Emergency Request
                 </label>
@@ -322,14 +320,14 @@ export default function StudentLeaveRequest() {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Reason for Request</label>
-              <textarea 
-                required 
-                minLength={5} 
-                name="reason" 
-                value={formData.reason} 
-                onChange={handleChange} 
-                rows={3} 
-                placeholder="Explain the specific reason for requesting this leave pass..." 
+              <textarea
+                required
+                minLength={5}
+                name="reason"
+                value={formData.reason}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Explain the specific reason for requesting this leave pass..."
                 className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs"
               />
             </div>
@@ -339,14 +337,14 @@ export default function StudentLeaveRequest() {
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Destination Address</label>
                 <div className="relative">
                   <span className="absolute left-3 top-3 text-slate-400"><MapPin size={16} /></span>
-                  <input 
-                    required 
-                    type="text" 
-                    name="destination" 
-                    value={formData.destination} 
-                    onChange={handleChange} 
-                    placeholder="City, State" 
-                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs" 
+                  <input
+                    required
+                    type="text"
+                    name="destination"
+                    value={formData.destination}
+                    onChange={handleChange}
+                    placeholder="City, State"
+                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs"
                   />
                 </div>
               </div>
@@ -354,14 +352,14 @@ export default function StudentLeaveRequest() {
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Emergency Contact Number</label>
                 <div className="relative">
                   <span className="absolute left-3 top-3 text-slate-400"><Phone size={16} /></span>
-                  <input 
-                    required 
-                    type="tel" 
-                    name="emergencyContact" 
-                    value={formData.emergencyContact} 
-                    onChange={handleChange} 
-                    placeholder="+91 XXXXX XXXXX" 
-                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs" 
+                  <input
+                    required
+                    type="tel"
+                    name="emergencyContact"
+                    value={formData.emergencyContact}
+                    onChange={handleChange}
+                    placeholder="+91 XXXXX XXXXX"
+                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs"
                   />
                 </div>
               </div>
@@ -371,35 +369,35 @@ export default function StudentLeaveRequest() {
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Departure Date & Time</label>
                 <div className="relative">
-                  <input 
-                    required 
-                    type="datetime-local" 
-                    name="departureDate" 
-                    value={formData.departureDate} 
-                    onChange={handleChange} 
-                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs" 
+                  <input
+                    required
+                    type="datetime-local"
+                    name="departureDate"
+                    value={formData.departureDate}
+                    onChange={handleChange}
+                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs font-bold"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-zinc-400">Expected Return Date & Time</label>
                 <div className="relative">
-                  <input 
-                    required 
-                    type="datetime-local" 
-                    name="expectedReturnDate" 
-                    value={formData.expectedReturnDate} 
-                    onChange={handleChange} 
-                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs" 
+                  <input
+                    required
+                    type="datetime-local"
+                    name="expectedReturnDate"
+                    value={formData.expectedReturnDate}
+                    onChange={handleChange}
+                    className="w-full p-2.5 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-slate-50 dark:bg-zinc-950 text-xs font-bold"
                   />
                 </div>
               </div>
             </div>
 
             <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
-              <button 
-                type="submit" 
-                disabled={submitting} 
+              <button
+                type="submit"
+                disabled={submitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 rounded-xl font-black text-sm tracking-wide transition shadow-md select-none cursor-pointer flex items-center justify-center gap-2"
               >
                 {submitting ? (
@@ -482,7 +480,7 @@ export default function StudentLeaveRequest() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {activeLeaves.map((leave) => (
               <div key={leave._id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-xs hover:shadow-md transition overflow-hidden flex flex-col justify-between">
-                
+
                 {/* Header Status Block */}
                 <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/40 flex justify-between items-center">
                   <div className="flex items-center gap-2">
@@ -665,19 +663,16 @@ export default function StudentLeaveRequest() {
 
       {/* PASS MODAL WITH SCANNER VIEW ENHANCEMENTS */}
       {selectedPass && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition duration-150 ${
-          highBrightness ? 'bg-white' : 'bg-slate-900/80 backdrop-blur-sm'
-        }`}>
-          
-          {/* Modal Container */}
-          <div className={`max-w-sm w-full rounded-3xl border shadow-2xl overflow-hidden flex flex-col justify-between ${
-            highBrightness ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-slate-100'
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition duration-150 ${highBrightness ? 'bg-white' : 'bg-slate-900/80 backdrop-blur-sm'
           }`}>
-            
-            {/* Modal Header */}
-            <div className={`p-4 flex justify-between items-center border-b ${
-              highBrightness ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+
+          {/* Modal Container */}
+          <div className={`max-w-sm w-full rounded-3xl border shadow-2xl overflow-hidden flex flex-col justify-between ${highBrightness ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-slate-100'
             }`}>
+
+            {/* Modal Header */}
+            <div className={`p-4 flex justify-between items-center border-b ${highBrightness ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+              }`}>
               <div>
                 <h3 className="font-black text-sm flex items-center gap-1.5">
                   🛡️ Gate Outpass Passcard
@@ -701,9 +696,8 @@ export default function StudentLeaveRequest() {
             {/* Modal Body */}
             <div className="p-6 space-y-6">
               {!isFullscreen && (
-                <div className={`p-4 rounded-xl space-y-3 text-xs leading-relaxed ${
-                  highBrightness ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-300'
-                }`}>
+                <div className={`p-4 rounded-xl space-y-3 text-xs leading-relaxed ${highBrightness ? 'bg-slate-50 text-slate-800' : 'bg-slate-900 text-slate-300'
+                  }`}>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="text-[8px] uppercase font-bold tracking-widest opacity-60 block">Hostel accommodation</span>
@@ -729,9 +723,8 @@ export default function StudentLeaveRequest() {
 
               {/* Large QR Display */}
               <div className="flex flex-col items-center justify-center py-2 space-y-4">
-                <div className={`p-3 rounded-2xl bg-white border flex items-center justify-center shadow-lg transition-transform ${
-                  isFullscreen ? 'scale-110 my-4' : ''
-                }`}>
+                <div className={`p-3 rounded-2xl bg-white border flex items-center justify-center shadow-lg transition-transform ${isFullscreen ? 'scale-110 my-4' : ''
+                  }`}>
                   <QRCodeCanvas value={selectedPass.qrToken} size={isFullscreen ? 200 : 160} level="H" includeMargin={true} />
                 </div>
                 <div className="text-center">
@@ -746,29 +739,26 @@ export default function StudentLeaveRequest() {
             </div>
 
             {/* Modal Controls */}
-            <div className={`p-4 border-t flex gap-2 justify-between items-center ${
-              highBrightness ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
-            }`}>
+            <div className={`p-4 border-t flex gap-2 justify-between items-center ${highBrightness ? 'bg-slate-50 border-slate-200' : 'bg-slate-900 border-slate-800'
+              }`}>
               <div className="flex gap-2">
                 <button
                   onClick={() => setHighBrightness(!highBrightness)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
-                    highBrightness 
-                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300' 
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${highBrightness
+                      ? 'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300'
                       : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                  }`}
+                    }`}
                   title="Toggle high contrast backing for scanning machines"
                 >
                   <Sun size={14} /> Contrast
                 </button>
-                
+
                 <button
                   onClick={() => setIsFullscreen(!isFullscreen)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
-                    isFullscreen 
-                      ? 'bg-blue-100 text-blue-800 border-blue-300' 
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${isFullscreen
+                      ? 'bg-blue-100 text-blue-800 border-blue-300'
                       : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                  }`}
+                    }`}
                 >
                   <Maximize2 size={14} /> Size
                 </button>

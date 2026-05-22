@@ -2,7 +2,6 @@ import { useState, useEffect, useContext } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
-import NativeSelect from '../components/NativeSelect';
 
 export default function AttendanceMark() {
   const { user } = useContext(AuthContext);
@@ -47,14 +46,14 @@ export default function AttendanceMark() {
       // First get the approved students in the room
       const res = await api.get(`/students?roomId=${roomId}&approvalStatus=APPROVED`);
       setStudents(res.data.students);
-      
+
       // Initialize attendance state (default all PRESENT)
       const initialRecords = {};
       res.data.students.forEach(student => {
         initialRecords[student._id] = { status: 'PRESENT', remarks: '' };
       });
       setAttendanceRecords(initialRecords);
-      
+
       // Attempt to fetch already marked attendance for this date
       const attRes = await api.get(`/attendance/daily?date=${date}&roomId=${roomId}`);
       if (attRes.data.attendances && attRes.data.attendances.length > 0) {
@@ -140,18 +139,18 @@ export default function AttendanceMark() {
           <div className="bg-white p-6 rounded shadow border mb-6 flex flex-wrap gap-6 items-end">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-bold text-gray-700 mb-1">Select Date</label>
-              <input 
-                type="date" 
-                value={date} 
+              <input
+                type="date"
+                value={date}
                 max={new Date().toISOString().split('T')[0]}
-                onChange={(e) => setDate(e.target.value)} 
+                onChange={(e) => setDate(e.target.value)}
                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
             <div className="flex-1 min-w-[150px]">
               <label className="block text-sm font-bold text-gray-700 mb-1">Select Floor</label>
-              <NativeSelect 
-                value={selectedFloor} 
+              <select
+                value={selectedFloor}
                 onChange={(e) => {
                   setSelectedFloor(e.target.value);
                   setSelectedRoomId(''); // Reset room when floor changes
@@ -163,13 +162,13 @@ export default function AttendanceMark() {
                 {[...new Set(rooms.map(r => r.floor))].sort((a, b) => a - b).map(floor => (
                   <option key={floor} value={floor}>Floor {floor}</option>
                 ))}
-              </NativeSelect>
+              </select>
             </div>
 
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-bold text-gray-700 mb-1">Select Room</label>
-              <NativeSelect 
-                value={selectedRoomId} 
+              <select
+                value={selectedRoomId}
                 onChange={(e) => setSelectedRoomId(e.target.value)}
                 disabled={!selectedFloor}
                 className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
@@ -178,7 +177,7 @@ export default function AttendanceMark() {
                 {rooms.filter(r => r.floor.toString() === selectedFloor.toString()).map(r => (
                   <option key={r._id} value={r._id}>Room {r.roomNumber}</option>
                 ))}
-              </NativeSelect>
+              </select>
             </div>
           </div>
 
@@ -193,7 +192,7 @@ export default function AttendanceMark() {
                   </div>
                 )}
               </div>
-              
+
               {fetchingStudents ? <div className="p-10 text-center">Loading students...</div> : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -217,14 +216,13 @@ export default function AttendanceMark() {
                                 <button
                                   key={status}
                                   onClick={() => handleStatusChange(student._id, status)}
-                                  className={`px-3 py-1 text-xs font-bold rounded border ${
-                                    attendanceRecords[student._id]?.status === status 
+                                  className={`px-3 py-1 text-xs font-bold rounded border ${attendanceRecords[student._id]?.status === status
                                       ? status === 'PRESENT' ? 'bg-green-600 text-white border-green-600'
-                                      : status === 'ABSENT' ? 'bg-red-600 text-white border-red-600'
-                                      : status === 'ON_LEAVE' ? 'bg-purple-600 text-white border-purple-600'
-                                      : 'bg-orange-600 text-white border-orange-600'
-                                    : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-100'
-                                  }`}
+                                        : status === 'ABSENT' ? 'bg-red-600 text-white border-red-600'
+                                          : status === 'ON_LEAVE' ? 'bg-purple-600 text-white border-purple-600'
+                                            : 'bg-orange-600 text-white border-orange-600'
+                                      : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-100'
+                                    }`}
                                 >
                                   {status.replace('_', ' ')}
                                 </button>
@@ -234,8 +232,8 @@ export default function AttendanceMark() {
                             {attendanceRecords[student._id]?.status === 'LATE_RETURN' && <div className="text-[10px] text-orange-600 mt-1">* Student has breached expected return time</div>}
                           </td>
                           <td className="px-6 py-4">
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               placeholder="Add note..."
                               value={attendanceRecords[student._id]?.remarks || ''}
                               onChange={(e) => handleRemarksChange(student._id, e.target.value)}
@@ -253,11 +251,11 @@ export default function AttendanceMark() {
                   </table>
                 </div>
               )}
-              
+
               {students.length > 0 && !fetchingStudents && (
                 <div className="p-4 border-t bg-gray-50 flex justify-end">
-                  <button 
-                    onClick={handleSubmit} 
+                  <button
+                    onClick={handleSubmit}
                     disabled={submitting}
                     className="bg-blue-600 text-white font-bold px-6 py-2 rounded shadow hover:bg-blue-700 disabled:opacity-50 transition"
                   >

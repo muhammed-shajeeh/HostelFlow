@@ -7,7 +7,7 @@ import api from '../api';
  * @param {object} user - Authenticated user details
  */
 export const registerPushNotifications = async (user) => {
-  if (!user || user.role === 'SECURITY') return;
+  if (!user) return;
 
   // 1. Android Native Capacitor Push Flow
   if (Capacitor.isNativePlatform()) {
@@ -21,6 +21,22 @@ export const registerPushNotifications = async (user) => {
       if (permStatus.receive !== 'granted') {
         console.warn('[Push Manager] Native push permission denied.');
         return;
+      }
+
+      // Create dedicated emergency notification channel with custom wailing sound and maximum priority
+      try {
+        await PushNotifications.createChannel({
+          id: 'emergency_channel',
+          name: 'Emergency Alerts',
+          description: 'Critical high-priority emergency notifications',
+          sound: 'emergency_siren',
+          importance: 5, // Max Importance (enables heads-up banner display)
+          visibility: 1, // VISIBILITY_PUBLIC (visible on lockscreen)
+          vibration: true
+        });
+        console.log('[Push Manager] Emergency notification channel created/synced successfully.');
+      } catch (channelErr) {
+        console.warn('[Push Manager] Failed to register emergency notification channel:', channelErr);
       }
 
       // Register with FCM
@@ -51,6 +67,11 @@ export const registerPushNotifications = async (user) => {
           console.log('[Push Manager] User tapped native notification, redirecting to:', data.route);
           window.location.href = data.route;
         }
+      });
+
+      // Listen for incoming notifications when app is in the foreground
+      await PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.log('[Push Manager] Native push notification received in foreground. Suppression active to avoid duplicate overlays:', notification);
       });
 
     } catch (err) {

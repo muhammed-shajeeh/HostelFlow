@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
-import NativeSelect from '../components/NativeSelect';
 
 export default function AdminHostels() {
   const [hostels, setHostels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     hostelCode: '',
@@ -72,7 +71,7 @@ export default function AdminHostels() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Hostel Management</h2>
-        <button 
+        <button
           onClick={() => setShowModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700"
         >
@@ -91,22 +90,21 @@ export default function AdminHostels() {
                   <h3 className="text-xl font-bold">{hostel.name}</h3>
                   <span className="text-xs font-mono bg-gray-200 px-2 py-1 rounded text-gray-700">{hostel.hostelCode}</span>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                  hostel.gender === 'BOYS' ? 'bg-blue-100 text-blue-800' :
-                  hostel.gender === 'GIRLS' ? 'bg-pink-100 text-pink-800' :
-                  'bg-purple-100 text-purple-800'
-                }`}>
+                <span className={`px-2 py-1 rounded text-xs font-bold ${hostel.gender === 'BOYS' ? 'bg-blue-100 text-blue-800' :
+                    hostel.gender === 'GIRLS' ? 'bg-pink-100 text-pink-800' :
+                      'bg-purple-100 text-purple-800'
+                  }`}>
                   {hostel.gender}
                 </span>
               </div>
               <p className="text-sm text-gray-600 mb-4">{hostel.description || 'No description provided.'}</p>
               <div className="text-sm mb-4">
-                <strong>Floors:</strong> {hostel.totalFloors} <br/>
-                <strong>Rooms:</strong> {hostel.totalRooms} <br/>
+                <strong>Floors:</strong> {hostel.totalFloors} <br />
+                <strong>Rooms:</strong> {hostel.totalRooms} <br />
                 <strong>Warden:</strong> {hostel.warden ? hostel.warden.fullName : <span className="text-red-500 font-bold">Not Assigned</span>}
               </div>
               <div className="flex justify-end border-t pt-4">
-                <button 
+                <button
                   onClick={() => handleDelete(hostel._id)}
                   className="text-red-600 text-sm font-bold hover:underline"
                 >
@@ -135,11 +133,11 @@ export default function AdminHostels() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Gender</label>
-                <NativeSelect name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <select name="gender" value={formData.gender} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none">
                   <option value="BOYS">Boys</option>
                   <option value="GIRLS">Girls</option>
                   <option value="MIXED">Mixed</option>
-                </NativeSelect>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Total Floors</label>

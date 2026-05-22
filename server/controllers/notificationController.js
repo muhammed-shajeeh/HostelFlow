@@ -81,10 +81,6 @@ const registerDeviceToken = async (req, res, next) => {
   try {
     const { fcmToken, deviceType } = req.body;
 
-    if (req.user.role === 'SECURITY') {
-      return res.status(403).json({ success: false, message: 'Security terminals cannot register push tokens.' });
-    }
-
     if (!fcmToken || !deviceType) {
       return res.status(400).json({ success: false, message: 'fcmToken and deviceType are required.' });
     }

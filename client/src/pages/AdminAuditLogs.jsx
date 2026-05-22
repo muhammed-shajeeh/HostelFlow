@@ -1,19 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  ShieldAlert, Calendar, Search, Filter, Clock, User, 
-  DollarSign, AlertCircle, AlertOctagon, MessageSquare, 
+import {
+  ShieldAlert, Calendar, Search, Filter, Clock, User,
+  DollarSign, AlertCircle, AlertOctagon, MessageSquare,
   Bell, RotateCcw, ShieldCheck, HelpCircle, ArrowRight, Loader2
 } from 'lucide-react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useSocket } from '../context/SocketContext';
-import NativeSelect from '../components/NativeSelect';
 
 // Helper to format date cleanly for human timelines
 const formatTimelineDate = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' + 
-         date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' +
+    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 // Map EntityTypes to beautiful Lucide icons
@@ -37,7 +36,7 @@ export default function AdminAuditLogs() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
+
   // Real-time flash effect ID reference
   const [newLogIds, setNewLogIds] = useState(new Set());
 
@@ -105,7 +104,7 @@ export default function AdminAuditLogs() {
         setLogs(prev => {
           // Avoid duplicate prepend checks
           if (prev.some(log => log._id === newLog._id)) return prev;
-          
+
           // Trigger highlights flash
           setNewLogIds(prevIds => {
             const nextIds = new Set(prevIds);
@@ -182,14 +181,14 @@ export default function AdminAuditLogs() {
 
       {/* Grid: Left Filters, Right Timeline */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
+
         {/* Left Side Filters Bar */}
         <div className="lg:col-span-1 flex flex-col gap-6">
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
             <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
               <Filter size={16} className="text-slate-500" /> Filters
             </h3>
-            
+
             {/* Search Input */}
             <form onSubmit={handleSearchSubmit} className="relative mt-2">
               <input
@@ -205,7 +204,7 @@ export default function AdminAuditLogs() {
             {/* Severity filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Severity Level</label>
-              <NativeSelect
+              <select
                 value={severity}
                 onChange={(e) => setSeverity(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none bg-slate-50 cursor-pointer"
@@ -215,13 +214,13 @@ export default function AdminAuditLogs() {
                 <option value="IMPORTANT">IMPORTANT</option>
                 <option value="WARNING">WARNING</option>
                 <option value="CRITICAL">CRITICAL</option>
-              </NativeSelect>
+              </select>
             </div>
 
             {/* Entity Type filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Event Module</label>
-              <NativeSelect
+              <select
                 value={entityType}
                 onChange={(e) => setEntityType(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none bg-slate-50 cursor-pointer"
@@ -236,13 +235,13 @@ export default function AdminAuditLogs() {
                 <option value="COMPLAINT">COMPLAINT</option>
                 <option value="NOTICE">NOTICE</option>
                 <option value="SYSTEM">SYSTEM</option>
-              </NativeSelect>
+              </select>
             </div>
 
             {/* Hostel Scope filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Hostel isolation</label>
-              <NativeSelect
+              <select
                 value={hostelId}
                 onChange={(e) => setHostelId(e.target.value)}
                 className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none bg-slate-50 cursor-pointer"
@@ -251,7 +250,7 @@ export default function AdminAuditLogs() {
                 {hostels.map((h) => (
                   <option key={h._id} value={h._id}>{h.name}</option>
                 ))}
-              </NativeSelect>
+              </select>
             </div>
 
             {/* Date Filters */}
@@ -295,7 +294,7 @@ export default function AdminAuditLogs() {
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              
+
               {/* Dynamic stats preview */}
               <div className="flex items-center justify-between text-xs text-slate-500 px-1">
                 <span>Showing <strong>{logs.length}</strong> entries out of <strong>{totalCount}</strong> total actions</span>
@@ -304,10 +303,10 @@ export default function AdminAuditLogs() {
 
               {/* The Timeline Thread */}
               <div className="relative border-l-2 border-slate-200 ml-5 pl-8 space-y-6">
-                
+
                 {logs.map((log) => {
                   const isNew = newLogIds.has(log._id);
-                  
+
                   // Scoped styling tags depending on Severity
                   let severityTag = 'bg-slate-100 text-slate-600';
                   let iconBg = 'bg-slate-100 text-slate-500 border-slate-200';
@@ -328,19 +327,17 @@ export default function AdminAuditLogs() {
                   }
 
                   return (
-                    <div 
-                      key={log._id} 
-                      className={`relative transition-all duration-700 ${
-                        isNew ? 'scale-[1.01] translate-x-1 shadow-md shadow-green-500/10 bg-green-50/40 border border-green-300 rounded-2xl p-0.5' : ''
-                      }`}
+                    <div
+                      key={log._id}
+                      className={`relative transition-all duration-700 ${isNew ? 'scale-[1.01] translate-x-1 shadow-md shadow-green-500/10 bg-green-50/40 border border-green-300 rounded-2xl p-0.5' : ''
+                        }`}
                     >
                       {/* Floating Absolute Indicator Node */}
-                      <span className={`absolute left-[-49px] top-4 w-8 h-8 rounded-full border-2 flex items-center justify-center z-10 transition-colors duration-500 ${
-                        isNew ? 'bg-green-500 text-white border-green-500 animate-bounce' : iconBg
-                      }`}>
+                      <span className={`absolute left-[-49px] top-4 w-8 h-8 rounded-full border-2 flex items-center justify-center z-10 transition-colors duration-500 ${isNew ? 'bg-green-500 text-white border-green-500 animate-bounce' : iconBg
+                        }`}>
                         {log.severity === 'CRITICAL' ? <AlertOctagon size={14} /> :
-                         log.severity === 'WARNING' ? <AlertCircle size={14} /> :
-                         getEntityIcon(log.entityType)}
+                          log.severity === 'WARNING' ? <AlertCircle size={14} /> :
+                            getEntityIcon(log.entityType)}
                       </span>
 
                       {/* Card layout */}
